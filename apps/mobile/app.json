@@ -37,7 +37,15 @@
           "locationAlwaysAndWhenInUsePermission": "Aplikasi membutuhkan akses lokasi untuk mendeteksi koordinat Anda saat melakukan absensi."
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.25"
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {
