@@ -15,7 +15,13 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.yeka.syncin"
+      "package": "com.yeka.syncin",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "plugins": [
       "@react-native-community/datetimepicker",
@@ -32,6 +38,11 @@
         }
       ],
       "expo-notifications"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2bcc7a9d-77f3-4e2b-805a-5db5582ae283"
+      }
+    }
   }
 }
