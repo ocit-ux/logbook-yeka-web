@@ -60,15 +60,15 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "0435be94-6cd0-4d8b-acac-865ae059b930"
+        "projectId": "2bcc7a9d-77f3-4e2b-805a-5db5582ae283"
       }
     },
-    "owner": "admin-yeka",
+    "owner": "rosyid99",
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/0435be94-6cd0-4d8b-acac-865ae059b930"
+      "url": "https://u.expo.dev/2bcc7a9d-77f3-4e2b-805a-5db5582ae283"
     }
   }
 }
