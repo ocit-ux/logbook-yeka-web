@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "SyncInYEKA",
+    "slug": "syncin-yeka",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.yeka.syncin"
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Aplikasi membutuhkan akses kamera untuk memfoto bukti absensi."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Aplikasi membutuhkan akses lokasi untuk mendeteksi koordinat Anda saat melakukan absensi."
+        }
+      ],
+      "expo-notifications"
+    ]
+  }
+}

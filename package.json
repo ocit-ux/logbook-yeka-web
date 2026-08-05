@@ -1,0 +1,1 @@
+{ "name": "absensi-monorepo", "private": true, "workspaces": ["apps/*"] }
