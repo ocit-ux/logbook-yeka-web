@@ -15,11 +15,12 @@ export async function registerForPushNotificationsAsync() {
   let token;
 
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
+    await Notifications.setNotificationChannelAsync('daily-reminder', {
+      name: 'Pengingat Harian',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#FF231F7C',
+      sound: 'notif.wav',
     });
   }
 
@@ -47,13 +48,15 @@ export async function scheduleDailyReminder() {
   await Notifications.scheduleNotificationAsync({
     content: {
       title: "Waktunya Pulang! ⏰",
-      body: "Jangan lupa isi Jurnal Absensi Anda hari ini ya.",
+      body: "Jangan lupa isi Loogbook Kegiatan Anda hari ini ya.",
       data: { type: 'daily_reminder' },
+      sound: 'notif.wav',
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour: 16,
       minute: 0,
+      channelId: 'daily-reminder',
     },
   });
 }

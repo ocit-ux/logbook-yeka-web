@@ -41,7 +41,12 @@
           "locationAlwaysAndWhenInUsePermission": "Aplikasi membutuhkan akses lokasi untuk mendeteksi koordinat Anda saat melakukan absensi."
         }
       ],
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "sounds": ["./assets/notif.wav"]
+        }
+      ],
       [
         "expo-build-properties",
         {
