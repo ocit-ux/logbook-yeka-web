@@ -44,7 +44,9 @@
       [
         "expo-notifications",
         {
-          "sounds": ["./assets/notif.wav"]
+          "sounds": [
+            "./assets/notif.wav"
+          ]
         }
       ],
       [
@@ -58,8 +60,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "2bcc7a9d-77f3-4e2b-805a-5db5582ae283"
+        "projectId": "0435be94-6cd0-4d8b-acac-865ae059b930"
       }
-    }
+    },
+    "owner": "admin-yeka"
   }
 }
