@@ -19,7 +19,7 @@ function MainApp() {
 
   const isAdmin = user?.role?.toLowerCase().trim() === 'admin';
 
-  // Efek Polling untuk Sesi Ganda (20 detik)
+  // Efek Polling untuk Sesi Ganda (60 detik agar server Google tidak down)
   useEffect(() => {
     let pollTimer = null;
     if (user && !isAdmin && user.rowIndex > 0) {
@@ -42,7 +42,7 @@ function MainApp() {
         } catch (e) {
           // Abaikan jika error jaringan sesaat
         }
-      }, 20000);
+      }, 60000);
     }
     return () => {
       if (pollTimer) clearInterval(pollTimer);
