@@ -511,7 +511,8 @@ function sendDailyReminder() {
     const sudahAbsen = absensiAll.some(a => {
       let tglAbsen = '';
       if (a.Timestamp) {
-        tglAbsen = Utilities.formatDate(new Date(a.Timestamp), Session.getScriptTimeZone() || 'GMT+7', 'dd-MM-yyyy');
+        // a.Timestamp sudah berbentuk string "dd-MM-yyyy HH:mm:ss" dari sheetToObjects_
+        tglAbsen = String(a.Timestamp).substring(0, 10);
       }
       return String(a.Email).trim().toLowerCase() === String(user.Email).trim().toLowerCase() && tglAbsen === todayStr;
     });
