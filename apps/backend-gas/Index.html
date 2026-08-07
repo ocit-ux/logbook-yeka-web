@@ -337,9 +337,15 @@
                     <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                         <div class="flex items-center gap-2">
                             <label for="rekap-filter-nama" class="text-xs font-bold text-gray-600">Karyawan:</label>
-                            <select id="rekap-filter-nama" onchange="renderTabelRekapExcelView()" class="px-3 py-2 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none bg-gray-50 min-w-[180px]">
-                                <option value="SEMUA">-- Semua Karyawan --</option>
+                            <select id="rekap-filter-nama" onchange="renderTabelRekapExcelView()" class="px-3 py-2 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none bg-gray-50 min-w-[120px]">
+                                <option value="SEMUA">-- Semua --</option>
                             </select>
+                            
+                            <label for="rekap-filter-date" class="text-xs font-bold text-gray-600 ml-2">Tanggal:</label>
+                            <input type="date" id="rekap-filter-date" onchange="document.getElementById('rekap-filter-month').value=''; renderTabelRekapExcelView()" class="px-3 py-2 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none bg-gray-50">
+                            
+                            <label for="rekap-filter-month" class="text-xs font-bold text-gray-600 ml-2">Bulan:</label>
+                            <input type="month" id="rekap-filter-month" onchange="document.getElementById('rekap-filter-date').value=''; renderTabelRekapExcelView()" class="px-3 py-2 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none bg-gray-50">
                         </div>
                         <button onclick="downloadAbsensiExcel()" class="bg-emerald-600 text-white font-bold text-xs px-5 py-2.5 rounded-xl hover:bg-emerald-700 shadow-md transition flex items-center gap-2">
                             <i class="fa-solid fa-file-excel text-sm"></i> Download File Excel (.xlsx)
@@ -886,7 +892,25 @@
                 return;
             }
 
-            const dataTerfilter = filterNama === 'SEMUA' ? cacheLogJurnal : cacheLogJurnal.filter(j => j.Nama === filterNama);
+            const filterDate = document.getElementById('rekap-filter-date').value; // format: YYYY-MM-DD
+            const filterMonth = document.getElementById('rekap-filter-month').value; // format: YYYY-MM
+
+            let dataTerfilter = filterNama === 'SEMUA' ? cacheLogJurnal : cacheLogJurnal.filter(j => j.Nama === filterNama);
+
+            if (filterDate) {
+                // filterDate is YYYY-MM-DD. We need to match j.Tanggal, j.Bulan, j.Tahun
+                // However, j.Timestamp has format "DD-MM-YYYY HH:mm:ss"
+                const [yyyy, mm, dd] = filterDate.split('-');
+                const targetPrefix = `${dd}-${mm}-${yyyy}`;
+                dataTerfilter = dataTerfilter.filter(j => String(j.Timestamp).startsWith(targetPrefix));
+            } else if (filterMonth) {
+                // filterMonth is YYYY-MM
+                const [yyyy, mm] = filterMonth.split('-');
+                const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                const targetMonth = months[parseInt(mm) - 1];
+                dataTerfilter = dataTerfilter.filter(j => String(j.Bulan) === targetMonth && String(j.Tahun) === yyyy);
+            }
+
 
             if (dataTerfilter.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="16" class="p-3.5 text-center text-gray-400">Tidak ada data untuk karyawan ini.</td></tr>`;

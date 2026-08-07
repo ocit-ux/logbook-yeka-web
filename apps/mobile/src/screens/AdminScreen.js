@@ -4,25 +4,21 @@ import { useTheme } from '../utils/theme';
 import { API_URL } from '../utils/api';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
-import DropDownPicker from 'react-native-dropdown-picker';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
-const BULAN_LIST = [
-  { label: 'Semua Bulan', value: '' },
-  { label: 'Januari', value: 'January' },
-  { label: 'Februari', value: 'February' },
-  { label: 'Maret', value: 'March' },
-  { label: 'April', value: 'April' },
-  { label: 'Mei', value: 'May' },
-  { label: 'Juni', value: 'June' },
-  { label: 'Juli', value: 'July' },
-  { label: 'Agustus', value: 'August' },
-  { label: 'September', value: 'September' },
-  { label: 'Oktober', value: 'October' },
-  { label: 'November', value: 'November' },
-  { label: 'Desember', value: 'December' },
-];
+const generateMonthYear = () => {
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const labels = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  const items = [{ label: 'Semua Periode', value: '' }];
+  const currentYear = new Date().getFullYear();
+  for(let y = currentYear; y >= currentYear - 1; y--) {
+    for(let m = 0; m < 12; m++) {
+      items.push({ label: `${labels[m]} ${y}`, value: `${months[m]}-${y}` });
+    }
+  }
+  return items;
+};
+const BULAN_LIST = generateMonthYear();
 
 export default function AdminScreen() {
   const { theme, isDark } = useTheme();
@@ -37,7 +33,8 @@ export default function AdminScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterItems, setFilterItems] = useState(BULAN_LIST);
 
-  useEffect(() => {
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [filterDate, setFilterDate] = useState(null);
     fetchData();
   }, []);
 
@@ -70,8 +67,19 @@ export default function AdminScreen() {
     const s = search.toLowerCase();
     const matchesSearch = String(item.Nama || '').toLowerCase().includes(s) || 
                           String(item.Kegiatan || '').toLowerCase().includes(s);
-    const matchesBulan = filterBulan === '' || String(item.Bulan || '') === filterBulan;
-    return matchesSearch && matchesBulan;
+    
+    let matchesTime = true;
+    if (filterDate) {
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      matchesTime = String(item.Tanggal) === String(filterDate.getDate()) && 
+                    String(item.Bulan) === months[filterDate.getMonth()] && 
+                    String(item.Tahun) === String(filterDate.getFullYear());
+    } else if (filterBulan) {
+      const [fMonth, fYear] = filterBulan.split('-');
+      matchesTime = String(item.Bulan) === fMonth && String(item.Tahun) === fYear;
+    }
+
+    return matchesSearch && matchesTime;
   });
 
   const totalHadir = filteredData.filter(i => i.Status === 'HADIR').length;
@@ -167,25 +175,55 @@ export default function AdminScreen() {
             onChangeText={setSearch}
           />
         </View>
+
+        <TouchableOpacity 
+          style={[styles.btnFilter, filterDate && {backgroundColor: theme.secondary}]} 
+          onPress={() => setShowDatePicker(true)}
+        >
+          <Ionicons name="calendar" size={18} color={filterDate ? theme.primaryDark : theme.textSecondary} />
+        </TouchableOpacity>
+
         <View style={[styles.pickerWrap, { zIndex: 10, borderWidth: 0, backgroundColor: 'transparent' }]}>
           <DropDownPicker
             open={filterOpen}
             value={filterBulan}
             items={filterItems}
             setOpen={setFilterOpen}
-            setValue={setFilterBulan}
+            setValue={(val) => { setFilterBulan(val); setFilterDate(null); }}
             setItems={setFilterItems}
             theme={isDark ? "DARK" : "LIGHT"}
             style={{ backgroundColor: theme.surface, borderColor: theme.border, minHeight: 48 }}
             dropDownContainerStyle={{ backgroundColor: theme.surface, borderColor: theme.border }}
-            textStyle={{ color: theme.text }}
-            placeholder="Pilih Bulan"
+            textStyle={{ color: theme.text, fontSize: 12 }}
+            placeholder="Bulan & Tahun"
             listMode="MODAL"
             modalProps={{ animationType: "slide" }}
-            modalTitle="Pilih Filter Bulan"
+            modalTitle="Pilih Bulan & Tahun"
             modalTitleStyle={{ color: theme.text, fontWeight: 'bold' }}
           />
         </View>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={filterDate || new Date()}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowDatePicker(false);
+              if (selectedDate) {
+                setFilterDate(selectedDate);
+                setFilterBulan('');
+              }
+            }}
+          />
+        )}
+
+        {filterDate && (
+           <TouchableOpacity style={styles.btnClear} onPress={() => setFilterDate(null)}>
+             <Ionicons name="close-circle" size={20} color={theme.error} />
+           </TouchableOpacity>
+        )}
+
         <TouchableOpacity style={styles.btnExport} onPress={exportPDF} disabled={exporting}>
           {exporting ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="print" size={18} color="#fff" />}
         </TouchableOpacity>
@@ -291,10 +329,25 @@ const getStyles = (theme) => StyleSheet.create({
     color: theme.text,
   },
   pickerWrap: {
-    flex: 1,
+    flex: 1.2,
     justifyContent: 'center',
     minHeight: 48,
-    marginRight: 10
+    marginRight: 6
+  },
+  btnFilter: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: theme.background,
+    borderWidth: 1,
+    borderColor: theme.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6
+  },
+  btnClear: {
+    marginRight: 6,
+    justifyContent: 'center'
   },
   btnExport: {
     backgroundColor: theme.primary,
