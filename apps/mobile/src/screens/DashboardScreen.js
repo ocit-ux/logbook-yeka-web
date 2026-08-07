@@ -66,7 +66,11 @@ export default function DashboardScreen({ user, onLogout }) {
         Alert.alert('Izin Ditolak', 'Izin lokasi GPS dibutuhkan untuk absensi.');
         return;
       }
-      let loc = await Location.getCurrentPositionAsync({});
+      let loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced, // Cepat, tidak perlu GPS presisi tinggi
+        timeInterval: 5000,
+        distanceInterval: 0
+      });
       setLocation(loc.coords);
     })();
     
@@ -182,7 +186,7 @@ export default function DashboardScreen({ user, onLogout }) {
       const response = await axios.post(API_URL, {
         action: 'submitAttendance',
         data: payload
-      });
+      }, { timeout: 25000 }); // Menyerah setelah 25 detik
 
       const resData = response.data;
       if (resData.status === 'success') {
