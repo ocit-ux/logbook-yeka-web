@@ -180,7 +180,10 @@ export default function AdminScreen() {
             dropDownContainerStyle={{ backgroundColor: theme.surface, borderColor: theme.border }}
             textStyle={{ color: theme.text }}
             placeholder="Pilih Bulan"
-            listMode="SCROLLVIEW"
+            listMode="MODAL"
+            modalProps={{ animationType: "slide" }}
+            modalTitle="Pilih Filter Bulan"
+            modalTitleStyle={{ color: theme.text, fontWeight: 'bold' }}
           />
         </View>
         <TouchableOpacity style={styles.btnExport} onPress={exportPDF} disabled={exporting}>
