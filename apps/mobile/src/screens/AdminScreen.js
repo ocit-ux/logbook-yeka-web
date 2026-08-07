@@ -191,7 +191,10 @@ export default function AdminScreen() {
             value={filterBulan}
             items={filterItems}
             setOpen={setFilterOpen}
-            setValue={(val) => { setFilterBulan(val); setFilterDate(null); }}
+            setValue={setFilterBulan}
+            onChangeValue={(val) => {
+              if (val) setFilterDate(null);
+            }}
             setItems={setFilterItems}
             theme={isDark ? "DARK" : "LIGHT"}
             style={{ backgroundColor: theme.surface, borderColor: theme.border, minHeight: 48 }}
