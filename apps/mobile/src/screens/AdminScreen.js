@@ -35,6 +35,8 @@ export default function AdminScreen() {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [filterDate, setFilterDate] = useState(null);
+
+  useEffect(() => {
     fetchData();
   }, []);
 
