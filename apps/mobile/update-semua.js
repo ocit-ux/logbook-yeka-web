@@ -31,8 +31,14 @@ try {
   appConfig.expo.updates.url = "https://u.expo.dev/2bcc7a9d-77f3-4e2b-805a-5db5582ae283";
   fs.writeFileSync(appJsonPath, JSON.stringify(appConfig, null, 2));
 
-  console.log("==> Mengunggah ke Cloud Expo (Android)...");
+  console.log("==> Mengunggah ke Cloud Expo (Android - Preview)...");
   execSync(`eas update --branch preview --message "${msg}"`, {
+    env: { ...process.env, EXPO_TOKEN: TOKEN_ANDROID },
+    stdio: 'inherit'
+  });
+
+  console.log("==> Mengunggah ke Cloud Expo (Android - Production)...");
+  execSync(`eas update --branch production --message "${msg}"`, {
     env: { ...process.env, EXPO_TOKEN: TOKEN_ANDROID },
     stdio: 'inherit'
   });
