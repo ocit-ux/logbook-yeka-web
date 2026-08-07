@@ -32,7 +32,7 @@ try {
   fs.writeFileSync(appJsonPath, JSON.stringify(appConfig, null, 2));
 
   console.log("==> Mengunggah ke Cloud Expo (Android)...");
-  execSync(`eas update --branch main --message "${msg}"`, {
+  execSync(`eas update --branch preview --message "${msg}"`, {
     env: { ...process.env, EXPO_TOKEN: TOKEN_ANDROID },
     stdio: 'inherit'
   });
@@ -62,7 +62,11 @@ try {
   // ==========================================
   console.log("==> 3. Mengembalikan konfigurasi app.json...");
   if (originalAppJson) {
-    fs.writeFileSync(appJsonPath, originalAppJson);
+    const finalConfig = JSON.parse(originalAppJson);
+    finalConfig.expo.owner = "rosyid99";
+    finalConfig.expo.extra.eas.projectId = "2bcc7a9d-77f3-4e2b-805a-5db5582ae283";
+    finalConfig.expo.updates.url = "https://u.expo.dev/2bcc7a9d-77f3-4e2b-805a-5db5582ae283";
+    fs.writeFileSync(appJsonPath, JSON.stringify(finalConfig, null, 2));
   }
   console.log("🎉 SEMUA PROSES SELESAI!");
 }
