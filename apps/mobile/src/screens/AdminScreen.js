@@ -266,7 +266,9 @@ const getStyles = (theme) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.border,
     alignItems: 'center',
-    gap: 10
+    gap: 10,
+    zIndex: 10,
+    elevation: 10
   },
   searchContainer: {
     flex: 1,
