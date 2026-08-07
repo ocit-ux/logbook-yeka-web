@@ -117,20 +117,26 @@ export default function DashboardScreen({ user, onLogout }) {
 
   const takePicture = async () => {
     if (cameraRef) {
-      let photoData = await cameraRef.takePictureAsync({ base64: true, quality: 0.5, shutterSound: false });
+      let rawPhoto = await cameraRef.takePictureAsync({ quality: 0.3, shutterSound: false });
+      let actions = [{ resize: { width: 800 } }];
+      
       if (cameraFacing === 'front') {
-        try {
-          const manipResult = await ImageManipulator.manipulateAsync(
-            photoData.uri || photoData.localUri,
-            [{ flip: ImageManipulator.FlipType.Horizontal }],
-            { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG, base64: true }
-          );
-          photoData = manipResult;
-        } catch(e) {
-          console.log("Failed to flip image:", e);
-        }
+        actions.push({ flip: ImageManipulator.FlipType.Horizontal });
       }
-      setPhoto(photoData);
+      
+      try {
+        const manipResult = await ImageManipulator.manipulateAsync(
+          rawPhoto.uri || rawPhoto.localUri,
+          actions,
+          { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+        );
+        setPhoto(manipResult);
+      } catch(e) {
+        console.log("Failed to manipulate image:", e);
+        // Fallback to raw if manipulate fails for some reason
+        let fallback = await cameraRef.takePictureAsync({ base64: true, quality: 0.1, shutterSound: false });
+        setPhoto(fallback);
+      }
       setShowCamera(false);
     }
   };
