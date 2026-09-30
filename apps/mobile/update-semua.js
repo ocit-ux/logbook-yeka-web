@@ -38,12 +38,14 @@ try {
 
   console.log("==> Mengunggah ke Cloud Expo (Preview)...");
   execSync(`eas update --branch preview --message "${msg}" --environment preview`, {
+    cwd: __dirname,
     env: { ...process.env, EXPO_TOKEN: TOKEN_IOS, CI: '1' }, // Pake token iOS karena sekarang satu akun
     stdio: 'inherit'
   });
 
   console.log("==> Mengunggah ke Cloud Expo (Production)...");
   execSync(`eas update --branch production --message "${msg}" --environment production`, {
+    cwd: __dirname,
     env: { ...process.env, EXPO_TOKEN: TOKEN_IOS, CI: '1' },
     stdio: 'inherit'
   });
@@ -53,7 +55,7 @@ try {
   // ==========================================
   console.log("\n==> 2. Mengunggah Web ke GitHub Pages...");
   try {
-    execSync(`npm run deploy:web`, { stdio: 'inherit' });
+    execSync(`npm run deploy:web`, { cwd: __dirname, stdio: 'inherit' });
     console.log("✅ Update Web Selesai!");
   } catch (webErr) {
     console.error("❌ Gagal mengunggah web:", webErr.message);
