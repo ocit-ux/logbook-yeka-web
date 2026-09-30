@@ -45,7 +45,6 @@ const JSWheelPicker = ({ items, selectedValue, onValueChange, theme }) => {
           const validIdx = Math.max(0, Math.min(items.length - 1, idx));
           if (validIdx !== activeIndex && items[validIdx]) {
             setActiveIndex(validIdx); // Update local visual state only
-            onValueChange(items[validIdx]); // Update parent instantly on scroll
           }
         }}
         onMomentumScrollEnd={(e) => {
