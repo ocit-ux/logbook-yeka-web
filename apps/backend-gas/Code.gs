@@ -17,17 +17,18 @@
  */
 
 // ==== KONFIGURASI ====
-const DRIVE_FOLDER_ID = '1U1boL1KZkfeinLdvNXPvWbRXI0MVG0dS';
-const SPREADSHEET_ID = '1_ndmQgr6msg_D-Ne1wd2J3nMa7F1WCdSGBf4we58zVY';
+const DRIVE_FOLDER_ID = '151sdXGAKkiG-2vwZNuLjycDJUX-Xwpf3';
+const DRIVE_FOLDER_PROFIL_ID = '1ePLRV24KwGL8bK0pSfVwhdxoMM9NlJPh';
+const SPREADSHEET_ID = '1GqZcbopZQchw0EpO-nN5OL6hwXvznw-Irj8QxzQmQQM';
 
 const SHEET_USERS = 'Users';
 const SHEET_ABSENSI = 'Absensi';
 
-const ADMIN_USERNAME = 'admin';
-const ADMIN_PASSWORD = 'admin';
+const ADMIN_USERNAME = 'admin.yeka@mail.or.id';
+const ADMIN_PASSWORD = '@AdminYeka2026#';
 
-const USERS_HEADERS = ['Nama', 'Email', 'Telepon', 'Divisi', 'Jabatan', 'Username', 'Password', 'Role', 'SessionId'];
-const ABSENSI_HEADERS = ['Timestamp', 'Nama', 'Email', 'Telepon', 'Jabatan', 'Divisi', 'Status', 'JamMulai', 'JamAkhir', 'Kegiatan', 'HasilKegiatan', 'IzinSakit', 'GPS', 'FotoURL', 'Device', 'Tanggal', 'Bulan', 'Tahun'];
+const USERS_HEADERS = ['Nama', 'Email', 'Telepon', 'Divisi', 'Jabatan', 'Username', 'Password', 'Role', 'SessionId', 'FotoProfil', 'ExpoPushToken'];
+const ABSENSI_HEADERS = ['Timestamp', 'Nama', 'Email', 'Telepon', 'Jabatan', 'Divisi', 'Status', 'JamMulai', 'JamAkhir', 'Kegiatan', 'HasilKegiatan', 'IzinSakit', 'GPS', 'FotoURL', 'Device', 'Tanggal', 'Bulan', 'Tahun', 'StatusKeamanan'];
 
 // ==== DIAGNOSTIK ====
 // Jalankan manual dari editor (pilih fungsi ini di dropdown -> Run), lihat di
@@ -99,14 +100,27 @@ function doPost(e) {
       case 'logoutUser':
         result = doLogoutUser(postData.rowIndex);
         break;
+      case 'uploadProfilePhoto':
+        result = uploadProfilePhoto(postData.rowIndex, postData.base64);
+        break;
       case 'getPilihanIzin':
         result = { data: getPilihanIzin() };
         break;
       case 'resetPin':
+      case 'forgotPassword': // alias dari LoginScreen
         result = doResetPin(postData.username);
         break;
       case 'checkSessionValid':
-        result = { valid: checkSessionValid(postData.rowIndex, postData.sessionId) };
+        result = { valid: checkSessionValid(postData.username, postData.sessionId) };
+        break;
+      case 'simpanPushToken':
+        result = simpanPushToken(postData.rowIndex, postData.token, postData.email, postData.username);
+        break;
+      case 'updateProfile':
+        result = updateProfile(postData.rowIndex, postData.data);
+        break;
+      case 'getUserProfile':
+        result = getUserProfile(postData.rowIndex);
         break;
       default:
         throw new Error('Unknown action: ' + action);
@@ -204,7 +218,8 @@ function doRegister(data) {
     const emailTaken = users.some(u => String(u.Email).toLowerCase() === email.toLowerCase());
     if (emailTaken) throw new Error('Email sudah terdaftar, silahkan login.');
 
-    sheet.appendRow([nama, email, telepon || '-', devisi, jabatan, username, password, 'pegawai', '']);
+    // Pastikan 11 kolom lengkap sesuai USERS_HEADERS (Nama, Email, Telepon, Divisi, Jabatan, Username, Password, Role, SessionId, FotoProfil, ExpoPushToken)
+    sheet.appendRow([nama, email, telepon ? "'" + telepon : '-', devisi, jabatan, username, password, 'pegawai', '', '', '']);
     return { success: true };
   } finally {
     lock.releaseLock();
@@ -244,7 +259,8 @@ function doLogin(usernameEmail, password) {
         return {
           nama: obj.Nama, email: obj.Email, telepon: obj.Telepon || '-', devisi: obj.Divisi,
           jabatan: obj.Jabatan, role: obj.Role || 'pegawai', username: obj.Username,
-          rowIndex: i + 1, sessionId: sessionId
+          rowIndex: i + 1, sessionId: sessionId, izinPC: String(obj['Izin PC'] || obj.IzinPC || 'TIDAK').toUpperCase(),
+          fotoProfil: obj.FotoProfil || ''
         };
       }
     }
@@ -255,13 +271,26 @@ function doLogin(usernameEmail, password) {
 }
 
 // Dipanggil client secara berkala buat cek sesi ganda (pengganti onSnapshot Firestore)
-function checkSessionValid(rowIndex, sessionId) {
-  if (rowIndex < 0) return true; // admin, tidak pakai sesi
+function checkSessionValid(username, sessionId) {
+  if (!username) return true;
+  if (username === ADMIN_USERNAME) return true;
+  
   const sheet = getSheet_(SHEET_USERS);
-  if (rowIndex > sheet.getLastRow()) return false; // baris sudah tidak ada
-  const sesiCol = headerIndex_(sheet, 'SessionId');
-  const dbSessionId = sheet.getRange(rowIndex, sesiCol).getValue();
-  return dbSessionId === sessionId;
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return false;
+  
+  const headers = data[0].map(h => String(h).trim());
+  const userCol = headers.indexOf('Username');
+  const sesiCol = headers.indexOf('SessionId');
+  
+  if (userCol < 0 || sesiCol < 0) return true; // Fail-safe
+  
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][userCol]).toLowerCase() === String(username).toLowerCase()) {
+      return String(data[i][sesiCol]) === String(sessionId);
+    }
+  }
+  return false;
 }
 
 function doLogoutUser(rowIndex) {
@@ -273,6 +302,83 @@ function doLogoutUser(rowIndex) {
     }
   }
   return { success: true };
+}
+
+function uploadProfilePhoto(rowIndex, base64) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sheet = getSheet_(SHEET_USERS);
+    let fotoCol;
+    try {
+      fotoCol = headerIndex_(sheet, 'FotoProfil');
+    } catch(e) {
+      fotoCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, fotoCol).setValue('FotoProfil');
+    }
+    const namaUser = sheet.getRange(rowIndex, headerIndex_(sheet, 'Nama')).getValue() || 'user';
+    const namaFile = 'PROFIL_' + String(namaUser).replace(/\s+/g, '_') + '_' + new Date().getTime();
+    
+    const fotoURL = simpanFotoKeDriveProfil_(base64, namaFile);
+    if(fotoURL) {
+      sheet.getRange(rowIndex, fotoCol).setValue(fotoURL);
+      SpreadsheetApp.flush();
+    }
+    return { success: true, fotoURL: fotoURL };
+  } catch(e) {
+    throw new Error('Gagal upload foto profil: ' + e.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function updateProfile(rowIndex, data) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    if (!rowIndex || rowIndex < 2) throw new Error('Akses ditolak.');
+    if (!data.nama || !data.telepon || !data.jabatan || !data.devisi) {
+      throw new Error('Data tidak lengkap.');
+    }
+    const sheet = getSheet_(SHEET_USERS);
+    if (rowIndex > sheet.getLastRow()) throw new Error('Data user tidak ditemukan.');
+    
+    const namaCol = headerIndex_(sheet, 'Nama');
+    const telpCol = headerIndex_(sheet, 'Telepon');
+    const divCol = headerIndex_(sheet, 'Divisi');
+    const jabCol = headerIndex_(sheet, 'Jabatan');
+
+    sheet.getRange(rowIndex, namaCol).setValue(data.nama);
+    sheet.getRange(rowIndex, telpCol).setValue("'" + data.telepon);
+    sheet.getRange(rowIndex, divCol).setValue(data.devisi);
+    sheet.getRange(rowIndex, jabCol).setValue(data.jabatan);
+
+    SpreadsheetApp.flush();
+    return { success: true };
+  } catch(e) {
+    throw new Error('Gagal update: ' + e.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getUserProfile(rowIndex) {
+  if (!rowIndex || rowIndex < 2) throw new Error('Invalid row');
+  const sheet = getSheet_(SHEET_USERS);
+  const users = sheetToObjects_(sheet);
+  const userData = users[rowIndex - 2];
+  if (!userData) throw new Error('User tidak ditemukan');
+  return { 
+    nama: userData.Nama,
+    email: userData.Email,
+    telepon: userData.Telepon,
+    devisi: userData.Divisi,
+    jabatan: userData.Jabatan,
+    username: userData.Username,
+    role: userData.Role,
+    fotoProfil: userData.FotoProfil,
+    rowIndex: rowIndex
+  };
 }
 
 // ==== FOTO KE DRIVE ====
@@ -304,7 +410,25 @@ function simpanFotoKeDrive_(base64Data, namaFile) {
     // Jangan buang link-nya -- tetap kembalikan biar kolom FotoURL terisi.
   }
 
-  return 'https://drive.google.com/uc?id=' + file.getId();
+  return 'https://lh3.googleusercontent.com/d/' + file.getId();
+}
+
+function simpanFotoKeDriveProfil_(base64Data, namaFile) {
+  if (!base64Data) return '';
+  let file;
+  try {
+    const cleanBase64 = base64Data.indexOf(',') > -1 ? base64Data.split(',')[1] : base64Data;
+    const bytes = Utilities.base64Decode(cleanBase64);
+    const blob = Utilities.newBlob(bytes, 'image/jpeg', namaFile + '.jpg');
+    const folder = DriveApp.getFolderById(DRIVE_FOLDER_PROFIL_ID);
+    file = folder.createFile(blob);
+  } catch (e) {
+    return '';
+  }
+  try {
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (e) { }
+  return 'https://lh3.googleusercontent.com/d/' + file.getId();
 }
 
 // ==== SUBMIT ABSENSI ====
@@ -326,21 +450,30 @@ function submitAttendance(data) {
     cache.put(base64Tail, 'true', 86400);
   }
 
+  // Pastikan kolom StatusKeamanan ada di header sheet
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+  if (headers.indexOf('StatusKeamanan') === -1) {
+    sheet.getRange(1, headers.length + 1).setValue('StatusKeamanan');
+  }
+
   const namaFile = String(data.nama || 'user').replace(/\s+/g, '_') + '_' + tgl.getTime();
   const fotoURL = simpanFotoKeDrive_(data.foto, namaFile);
 
+  const statusKeamanan = String(data.statusKeamanan || 'AMAN (GPS Asli)').trim();
+
   const rowBaru = [
-    tgl, data.nama, data.email, data.telepon || '-', data.jabatan, data.devisi,
+    tgl, data.nama, data.email, data.telepon ? "'" + String(data.telepon).trim() : '-', data.jabatan, data.devisi,
     data.status, data.jamMulai || '-', data.jamAkhir || '-', data.kegiatan || '-',
     data.hasil_kegiatan || '-', data.izin_sakit || '-', data.gps || '-',
     fotoURL, data.device || '-', tgl.getDate(),
-    Utilities.formatDate(tgl, Session.getScriptTimeZone() || 'GMT+7', 'MMMM'), tgl.getFullYear()
+    Utilities.formatDate(tgl, Session.getScriptTimeZone() || 'GMT+7', 'MMMM'), tgl.getFullYear(),
+    statusKeamanan
   ];
   Logger.log('submitAttendance -> menulis ke sheet ' + sheet.getName() + ' di spreadsheet ' + SPREADSHEET_ID + ': ' + JSON.stringify(rowBaru));
   sheet.appendRow(rowBaru);
   SpreadsheetApp.flush();
   Logger.log('submitAttendance -> sukses, lastRow sekarang = ' + sheet.getLastRow());
-  return { success: true, fotoURL: fotoURL };
+  return { success: true, fotoURL: fotoURL, statusKeamanan: statusKeamanan };
 }
 
 // ==== AMBIL DATA ====
@@ -444,8 +577,13 @@ function doResetPin(username) {
     // Generate PIN baru 6 digit
     const newPin = String(Math.floor(100000 + Math.random() * 900000));
 
-    // Simpan PIN baru ke sheet
-    const passCol = headers.indexOf('Password') + 1;
+    // Simpan PIN baru ke sheet (pencarian case-insensitive)
+    let passCol = -1;
+    headers.forEach((h, idx) => {
+      if (String(h).trim().toLowerCase() === 'password') {
+        passCol = idx + 1;
+      }
+    });
     if (passCol < 1) throw new Error('Kolom Password tidak ditemukan di sheet.');
     sheet.getRange(userRow, passCol).setValue(newPin);
     SpreadsheetApp.flush();
@@ -484,15 +622,30 @@ function doResetPin(username) {
 function setupTrigger() {
   const triggers = ScriptApp.getProjectTriggers();
   for (let i = 0; i < triggers.length; i++) {
-    if (triggers[i].getHandlerFunction() === 'sendDailyReminder') {
+    const handler = triggers[i].getHandlerFunction();
+    if (handler === 'sendDailyReminder' || handler === 'kirimPushNotifikasiHarian' || handler === 'pengingatHarianOtomatis') {
       ScriptApp.deleteTrigger(triggers[i]);
     }
   }
-  ScriptApp.newTrigger('sendDailyReminder')
+  // Daftarkan fungsi induk yang mengeksekusi push notification dan email
+  ScriptApp.newTrigger('pengingatHarianOtomatis')
     .timeBased()
     .atHour(16)
     .everyDays(1)
     .create();
+}
+
+function pengingatHarianOtomatis() {
+  try {
+    kirimPushNotifikasiHarian();
+  } catch (e) {
+    Logger.log('Error kirimPushNotifikasiHarian: ' + e.message);
+  }
+  try {
+    sendDailyReminder();
+  } catch (e) {
+    Logger.log('Error sendDailyReminder: ' + e.message);
+  }
 }
 
 function sendDailyReminder() {
@@ -503,18 +656,24 @@ function sendDailyReminder() {
   const absensiAll = sheetToObjects_(sheetAbsensi);
   
   const todayStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'GMT+7', 'dd-MM-yyyy');
+  const todayDate = new Date().getDate();
+  const todayMonthName = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'GMT+7', 'MMMM');
+  const todayYear = new Date().getFullYear();
   
   users.forEach(user => {
     if (!user.Email) return;
     
-    // Cek apakah user ini sudah absen hari ini
+    // Cek apakah user ini sudah absen hari ini (cek via Timestamp string atau kombinasi Tanggal-Bulan-Tahun)
     const sudahAbsen = absensiAll.some(a => {
+      const emailCocok = String(a.Email || '').trim().toLowerCase() === String(user.Email).trim().toLowerCase();
+      if (!emailCocok) return false;
+
       let tglAbsen = '';
       if (a.Timestamp) {
-        // a.Timestamp sudah berbentuk string "dd-MM-yyyy HH:mm:ss" dari sheetToObjects_
         tglAbsen = String(a.Timestamp).substring(0, 10);
       }
-      return String(a.Email).trim().toLowerCase() === String(user.Email).trim().toLowerCase() && tglAbsen === todayStr;
+      const tglCocok = tglAbsen === todayStr || (String(a.Tanggal) === String(todayDate) && String(a.Bulan) === String(todayMonthName) && String(a.Tahun) === String(todayYear));
+      return tglCocok;
     });
     
     if (!sudahAbsen) {
@@ -529,4 +688,143 @@ function sendDailyReminder() {
       }
     }
   });
+}
+
+// ==== PUSH NOTIFICATION ====
+
+function simpanPushToken(rowIndex, token, email, username) {
+  if (!token) return { success: false, message: 'Token kosong' };
+  try {
+    const sheet = getSheet_(SHEET_USERS);
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 1) return { success: false, message: 'Sheet Users kosong' };
+
+    const headers = data[0].map(h => String(h).trim());
+    
+    // Cari kolom ExpoPushToken secara fleksibel (case-insensitive & abaikan spasi/simbol)
+    let tokenCol = -1;
+    for (let c = 0; c < headers.length; c++) {
+      const cleanH = headers[c].toLowerCase().replace(/[\s_-]/g, '');
+      if (cleanH === 'expopushtoken' || cleanH === 'pushtoken') {
+        tokenCol = c + 1;
+        break;
+      }
+    }
+
+    if (tokenCol === -1) {
+      // Jika belum ada kolom ExpoPushToken, tambahkan di kolom paling akhir
+      tokenCol = headers.length + 1;
+      sheet.getRange(1, tokenCol).setValue('ExpoPushToken');
+    }
+
+    // Tentukan baris target
+    let targetRow = parseInt(rowIndex, 10);
+    const lastRow = sheet.getLastRow();
+
+    // Validasi apakah targetRow valid
+    let rowValid = targetRow > 1 && targetRow <= lastRow;
+    
+    if (!rowValid && (email || username)) {
+      // Cari baris berdasarkan Email atau Username
+      const emailCol = headers.findIndex(h => h.toLowerCase() === 'email');
+      const userCol = headers.findIndex(h => h.toLowerCase() === 'username');
+      
+      const targetEmail = String(email || '').trim().toLowerCase();
+      const targetUser = String(username || '').trim().toLowerCase();
+
+      for (let r = 1; r < data.length; r++) {
+        const rowEmail = emailCol >= 0 ? String(data[r][emailCol] || '').trim().toLowerCase() : '';
+        const rowUser = userCol >= 0 ? String(data[r][userCol] || '').trim().toLowerCase() : '';
+        
+        if ((targetEmail && rowEmail === targetEmail) || (targetUser && rowUser === targetUser)) {
+          targetRow = r + 1;
+          rowValid = true;
+          break;
+        }
+      }
+    }
+
+    if (rowValid && targetRow > 1) {
+      sheet.getRange(targetRow, tokenCol).setValue(String(token).trim());
+      SpreadsheetApp.flush();
+      return { success: true, row: targetRow, col: tokenCol };
+    }
+
+    return { success: false, message: 'Baris user tidak ditemukan' };
+  } catch (e) {
+    Logger.log('simpanPushToken error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+// Jalankan otomatis via Time-based Trigger jam 16:00 setiap hari
+function kirimPushNotifikasiHarian() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheetUsers = ss.getSheetByName(SHEET_USERS);
+  const sheetAbsensi = ss.getSheetByName(SHEET_ABSENSI);
+
+  if (!sheetUsers || !sheetAbsensi) return;
+
+  const users = sheetToObjects_(sheetUsers);
+  const absensi = sheetToObjects_(sheetAbsensi);
+
+  // Ambil daftar email yang sudah absen hari ini
+  const todayStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'GMT+7', 'dd-MM-yyyy');
+  const todayDate = new Date().getDate();
+  const todayMonthName = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'GMT+7', 'MMMM');
+  const todayYear = new Date().getFullYear();
+
+  const sudahAbsenHariIni = new Set(
+    absensi
+      .filter(row => {
+        let tglAbsen = '';
+        if (row.Timestamp) {
+          tglAbsen = String(row.Timestamp).substring(0, 10);
+        }
+        return tglAbsen === todayStr || (String(row.Tanggal) === String(todayDate) && String(row.Bulan) === String(todayMonthName) && String(row.Tahun) === String(todayYear));
+      })
+      .map(row => String(row['Email'] || '').toLowerCase().trim())
+  );
+
+  // Filter karyawan yang belum absen dan punya token
+  const targetUsers = users.filter(u => {
+    const role = String(u['Role'] || '').toLowerCase().trim();
+    const token = String(u['ExpoPushToken'] || '').trim();
+    const email = String(u['Email'] || '').toLowerCase().trim();
+    return role !== 'admin' && (token.startsWith('ExponentPushToken') || token.startsWith('ExpoPushToken')) && !sudahAbsenHariIni.has(email);
+  });
+
+  if (targetUsers.length === 0) {
+    Logger.log('Semua karyawan sudah absen hari ini.');
+    return;
+  }
+
+  // Kirim push notification via Expo Push API (batch, max 100 per request)
+  const messages = targetUsers.map(u => ({
+    to: String(u['ExpoPushToken']).trim(),
+    title: '📋 Waktunya Kirim Logbook!',
+    body: 'Halo ' + u['Nama'] + ', jangan lupa isi jurnal kegiatan hari ini ya.',
+    data: { type: 'server_daily_reminder' },
+    sound: 'notif.wav',
+    channelId: 'daily-reminder-v2', // Sesuai dengan channelId di mobile app
+    priority: 'high'
+  }));
+
+  const chunkSize = 100;
+  for (let i = 0; i < messages.length; i += chunkSize) {
+    const chunk = messages.slice(i, i + chunkSize);
+    try {
+      const response = UrlFetchApp.fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify(chunk),
+        muteHttpExceptions: true
+      });
+      Logger.log('Expo Push response: ' + response.getContentText());
+    } catch(e) {
+      Logger.log('Gagal kirim push notification: ' + e.message);
+    }
+  }
+
+  Logger.log('Push notification terkirim ke ' + targetUsers.length + ' karyawan.');
 }

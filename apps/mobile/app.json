@@ -24,11 +24,12 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
-      ]
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
-      "@react-native-community/datetimepicker",
       [
         "expo-camera",
         {
@@ -53,22 +54,28 @@
         "expo-build-properties",
         {
           "android": {
-            "kotlinVersion": "1.9.25"
+            "kotlinVersion": "2.1.20"
           }
         }
-      ]
+      ],
+      "expo-sharing",
+      "expo-status-bar",
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "eas": {
-        "projectId": "2bcc7a9d-77f3-4e2b-805a-5db5582ae283"
+        "projectId": "0435be94-6cd0-4d8b-acac-865ae059b930"
       }
     },
-    "owner": "rosyid99",
+    "updates": {
+      "url": "https://u.expo.dev/0435be94-6cd0-4d8b-acac-865ae059b930"
+    },
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "updates": {
-      "url": "https://u.expo.dev/2bcc7a9d-77f3-4e2b-805a-5db5582ae283"
+    "owner": "admin-yeka",
+    "experiments": {
+      "baseUrl": "/logbook-yeka-web"
     }
   }
 }

@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput, Modal } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../utils/theme';
 import { API_URL } from '../utils/api';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import DropDownPicker from 'react-native-dropdown-picker';
+import { showAlert } from '../utils/alert';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import DateTimePicker from '@react-native-community/datetimepicker';
+// import DateTimePicker from '@react-native-community/datetimepicker';
 const generateMonthYear = () => {
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const labels = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -37,17 +40,28 @@ export default function AdminScreen() {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [filterDate, setFilterDate] = useState(null);
+  const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
+      
+      // Tampilkan cache dulu biar instan
+      const cached = await AsyncStorage.getItem('@admin_absensi_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        setAbsensi(parsed);
+        setLoading(false); // Tampilkan cache, loading selesai
+      }
+
+      // Fetch data segar di background
       const response = await axios.post(API_URL, {
         action: 'getAllAbsensi'
-      });
+      }, { timeout: 30000 });
 
       const resData = response.data;
       if (resData.status === 'success') {
@@ -55,11 +69,12 @@ export default function AdminScreen() {
         if (Array.isArray(resData.data)) safeArray = resData.data;
         else if (resData.data && Array.isArray(resData.data.data)) safeArray = resData.data.data;
         setAbsensi(safeArray);
-      } else {
+        AsyncStorage.setItem('@admin_absensi_cache', JSON.stringify(safeArray));
+      } else if (!cached) {
         setError('Gagal memuat data absensi.');
       }
     } catch (err) {
-      setError('Koneksi internet bermasalah.');
+      if (!absensi.length) setError('Koneksi internet bermasalah.');
     } finally {
       setLoading(false);
     }
@@ -91,7 +106,7 @@ export default function AdminScreen() {
 
   const exportPDF = async () => {
     if (filteredData.length === 0) {
-      Alert.alert('Tidak Ada Data', 'Tidak ada rekap untuk diekspor.');
+      showAlert('Tidak Ada Data', 'Tidak ada rekap untuk diekspor.');
       return;
     }
     setExporting(true);
@@ -102,7 +117,7 @@ export default function AdminScreen() {
           <td>${item.Tanggal || '-'} ${item.Bulan || ''}</td>
           <td><span class="badge ${item.Status === 'HADIR' ? 'hadir' : 'izin'}">${item.Status || '-'}</span></td>
           <td>${item.JamMulai || '-'} - ${item.JamAkhir || '-'}</td>
-          <td>${item.Kegiatan || '-'}</td>
+          <td>${item.Kegiatan || '-'}${item.StatusKeamanan && item.StatusKeamanan.includes('TERDETEKSI') ? `<br><b style="color:#b91c1c;font-size:10px;">[${item.StatusKeamanan}]</b>` : ''}</td>
         </tr>
       `).join('');
 
@@ -114,8 +129,8 @@ export default function AdminScreen() {
             body { font-family: Arial, sans-serif; font-size: 12px; color: #333; }
             h1 { color: #1b4d3e; font-size: 16px; margin-bottom: 4px; }
             h2 { color: #555; font-size: 12px; font-weight: normal; margin-top: 0; }
-            .summary { display: flex; gap: 20px; margin: 16px 0; }
-            .sum-box { padding: 8px 16px; border-radius: 6px; font-weight: bold; }
+            .summary { display: flex; margin: 16px 0; }
+            .sum-box { padding: 8px 16px; border-radius: 6px; font-weight: bold; margin-right: 20px; }
             .sum-hadir { background: #d1fae5; color: #065f46; }
             .sum-izin  { background: #fef3c7; color: #92400e; }
             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -153,10 +168,57 @@ export default function AdminScreen() {
       const { uri } = await Print.printToFileAsync({ html });
       await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Ekspor Laporan PDF' });
     } catch (e) {
-      Alert.alert('Gagal', 'Terjadi kesalahan saat membuat PDF.');
+      showAlert('Gagal', 'Terjadi kesalahan saat membuat PDF.');
     } finally {
       setExporting(false);
     }
+  };
+
+  const renderCalendar = () => {
+    const year = currentMonthDate.getFullYear();
+    const month = currentMonthDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    const days = [];
+    for (let i = 0; i < firstDay; i++) days.push(<View key={'e'+i} style={styles.calDay} />);
+    
+    for (let i = 1; i <= daysInMonth; i++) {
+      const isSelected = filterDate && filterDate.getDate() === i && filterDate.getMonth() === month && filterDate.getFullYear() === year;
+      days.push(
+        <TouchableOpacity 
+          key={i} 
+          style={[styles.calDay, isSelected && {backgroundColor: theme.primary}]}
+          onPress={() => {
+            setFilterDate(new Date(year, month, i));
+            setFilterBulan('');
+            setShowDatePicker(false);
+          }}
+        >
+          <Text style={[styles.calDayText, isSelected && {color: '#fff'}]}>{i}</Text>
+        </TouchableOpacity>
+      );
+    }
+    
+    const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+    return (
+      <View style={styles.calContainer}>
+        <View style={styles.calHeader}>
+          <TouchableOpacity onPress={() => setCurrentMonthDate(new Date(year, month - 1, 1))}>
+            <Ionicons name="chevron-back" size={24} color={theme.text} />
+          </TouchableOpacity>
+          <Text style={styles.calMonthYear}>{monthNames[month]} {year}</Text>
+          <TouchableOpacity onPress={() => setCurrentMonthDate(new Date(year, month + 1, 1))}>
+            <Ionicons name="chevron-forward" size={24} color={theme.text} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.calWeekRow}>
+          {['M', 'S', 'S', 'R', 'K', 'J', 'S'].map((d, i) => <Text key={i} style={styles.calWeekDay}>{d}</Text>)}
+        </View>
+        <View style={styles.calDaysGrid}>{days}</View>
+      </View>
+    );
   };
 
   const styles = getStyles(theme);
@@ -210,20 +272,16 @@ export default function AdminScreen() {
           />
         </View>
 
-        {showDatePicker && (
-          <DateTimePicker
-            value={filterDate || new Date()}
-            mode="date"
-            display="default"
-            onChange={(event, selectedDate) => {
-              setShowDatePicker(false);
-              if (selectedDate) {
-                setFilterDate(selectedDate);
-                setFilterBulan('');
-              }
-            }}
-          />
-        )}
+        <Modal visible={showDatePicker} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, {backgroundColor: theme.surface}]}>
+              {renderCalendar()}
+              <TouchableOpacity style={styles.btnBatal} onPress={() => setShowDatePicker(false)}>
+                <Text style={styles.btnBatalText}>Tutup</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         {filterDate && (
            <TouchableOpacity style={styles.btnClear} onPress={() => setFilterDate(null)}>
@@ -288,6 +346,13 @@ export default function AdminScreen() {
                   <Text style={styles.value}>{item.IzinSakit}</Text>
                 </>
               )}
+
+              {item.StatusKeamanan && item.StatusKeamanan.includes('TERDETEKSI') && (
+                <View style={{ backgroundColor: '#fee2e2', borderColor: '#ef4444', borderWidth: 1, padding: 8, borderRadius: 8, marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="warning" size={16} color="#b91c1c" style={{ marginRight: 6 }} />
+                  <Text style={{ color: '#b91c1c', fontSize: 12, fontWeight: 'bold' }}>{item.StatusKeamanan}</Text>
+                </View>
+              )}
             </View>
           ))
         )}
@@ -314,7 +379,6 @@ const getStyles = (theme) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.border,
     alignItems: 'center',
-    gap: 10,
     zIndex: 10,
     elevation: 10
   },
@@ -327,7 +391,8 @@ const getStyles = (theme) => StyleSheet.create({
     borderColor: theme.border,
     borderRadius: 8,
     paddingHorizontal: 10,
-    height: 40
+    height: 40,
+    marginRight: 6
   },
   searchInput: {
     flex: 1,
@@ -368,10 +433,11 @@ const getStyles = (theme) => StyleSheet.create({
   summaryRow: {
     flexDirection: 'row',
     padding: 16,
-    gap: 10,
+    justifyContent: 'space-between',
   },
   sumCard: {
     flex: 1,
+    marginHorizontal: 5,
     backgroundColor: theme.surface,
     borderTopWidth: 3,
     padding: 12,
@@ -419,5 +485,18 @@ const getStyles = (theme) => StyleSheet.create({
   value: { fontSize: 14, color: theme.text, fontWeight: '500', marginTop: 2 },
   
   emptyContainer: { alignItems: 'center', marginTop: 60 },
-  emptyText: { color: theme.textSecondary, marginTop: 16, fontSize: 16 }
+  emptyText: { color: theme.textSecondary, marginTop: 16, fontSize: 16 },
+  
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { width: '85%', padding: 20, borderRadius: 12, shadowColor: '#000', elevation: 5 },
+  calContainer: { width: '100%' },
+  calHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  calMonthYear: { fontSize: 16, fontWeight: 'bold', color: theme.text },
+  calWeekRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  calWeekDay: { width: '14%', textAlign: 'center', fontWeight: 'bold', color: theme.textSecondary },
+  calDaysGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  calDay: { width: '14%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 20 },
+  calDayText: { fontSize: 14, color: theme.text },
+  btnBatal: { marginTop: 20, padding: 12, backgroundColor: theme.error, borderRadius: 8, alignItems: 'center' },
+  btnBatalText: { color: '#fff', fontWeight: 'bold' }
 });

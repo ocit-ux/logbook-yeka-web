@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "308318930120",
+    "project_id": "syncinyeka",
+    "storage_bucket": "syncinyeka.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:308318930120:android:10335fe3420f3abc9ed1fd",
+        "android_client_info": {
+          "package_name": "com.yeka.syncin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDUn8YB-91B-4oqqKa_Kis124Lv3yHkLcQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

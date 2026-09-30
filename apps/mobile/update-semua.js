@@ -23,42 +23,43 @@ try {
   console.log(`\n🚀 MEMULAI UPDATE GHAIB (Pesan: "${msg}")...\n`);
 
   // ==========================================
-  // TAHAP 1: UPDATE ANDROID (Akun Asli: rosyid99)
+  // UPDATE GHOIB KE EXPO (Akun: admin-yeka)
   // ==========================================
-  console.log("==> 1. Konfigurasi untuk Android (rosyid99)...");
-  appConfig.expo.owner = "rosyid99";
-  appConfig.expo.extra.eas.projectId = "2bcc7a9d-77f3-4e2b-805a-5db5582ae283";
-  appConfig.expo.updates.url = "https://u.expo.dev/2bcc7a9d-77f3-4e2b-805a-5db5582ae283";
-  fs.writeFileSync(appJsonPath, JSON.stringify(appConfig, null, 2));
-
-  console.log("==> Mengunggah ke Cloud Expo (Android - Preview)...");
-  execSync(`eas update --branch preview --message "${msg}"`, {
-    env: { ...process.env, EXPO_TOKEN: TOKEN_ANDROID },
-    stdio: 'inherit'
-  });
-
-  console.log("==> Mengunggah ke Cloud Expo (Android - Production)...");
-  execSync(`eas update --branch production --message "${msg}"`, {
-    env: { ...process.env, EXPO_TOKEN: TOKEN_ANDROID },
-    stdio: 'inherit'
-  });
-  console.log("✅ Update Android Selesai!\n");
-
-  // ==========================================
-  // TAHAP 2: UPDATE IOS (Akun Tumbal: admin-yeka)
-  // ==========================================
-  console.log("==> 2. Konfigurasi untuk iOS (admin-yeka)...");
+  console.log("==> 1. Konfigurasi App.json (admin-yeka)...");
   appConfig.expo.owner = "admin-yeka";
+  if (!appConfig.expo.extra) appConfig.expo.extra = {};
+  if (!appConfig.expo.extra.eas) appConfig.expo.extra.eas = {};
   appConfig.expo.extra.eas.projectId = "0435be94-6cd0-4d8b-acac-865ae059b930";
+  
+  if (!appConfig.expo.updates) appConfig.expo.updates = {};
   appConfig.expo.updates.url = "https://u.expo.dev/0435be94-6cd0-4d8b-acac-865ae059b930";
+  
   fs.writeFileSync(appJsonPath, JSON.stringify(appConfig, null, 2));
 
-  console.log("==> Mengunggah ke Cloud Expo (iOS)...");
-  execSync(`eas update --branch main --message "${msg}"`, {
-    env: { ...process.env, EXPO_TOKEN: TOKEN_IOS },
+  console.log("==> Mengunggah ke Cloud Expo (Preview)...");
+  execSync(`eas update --branch preview --message "${msg}" --environment preview`, {
+    env: { ...process.env, EXPO_TOKEN: TOKEN_IOS, CI: '1' }, // Pake token iOS karena sekarang satu akun
     stdio: 'inherit'
   });
-  console.log("✅ Update iOS Selesai!\n");
+
+  console.log("==> Mengunggah ke Cloud Expo (Production)...");
+  execSync(`eas update --branch production --message "${msg}" --environment production`, {
+    env: { ...process.env, EXPO_TOKEN: TOKEN_IOS, CI: '1' },
+    stdio: 'inherit'
+  });
+
+  // ==========================================
+  // UPDATE WEB KE GITHUB PAGES
+  // ==========================================
+  console.log("\n==> 2. Mengunggah Web ke GitHub Pages...");
+  try {
+    execSync(`npm run deploy:web`, { stdio: 'inherit' });
+    console.log("✅ Update Web Selesai!");
+  } catch (webErr) {
+    console.error("❌ Gagal mengunggah web:", webErr.message);
+  }
+
+  console.log("\n✅ Semua Update Selesai!\n");
 
 } catch (error) {
   console.error("❌ TERJADI KESALAHAN SAAT UPDATE:", error.message);
@@ -68,11 +69,7 @@ try {
   // ==========================================
   console.log("==> 3. Mengembalikan konfigurasi app.json...");
   if (originalAppJson) {
-    const finalConfig = JSON.parse(originalAppJson);
-    finalConfig.expo.owner = "rosyid99";
-    finalConfig.expo.extra.eas.projectId = "2bcc7a9d-77f3-4e2b-805a-5db5582ae283";
-    finalConfig.expo.updates.url = "https://u.expo.dev/2bcc7a9d-77f3-4e2b-805a-5db5582ae283";
-    fs.writeFileSync(appJsonPath, JSON.stringify(finalConfig, null, 2));
+    fs.writeFileSync(appJsonPath, originalAppJson);
   }
   console.log("🎉 SEMUA PROSES SELESAI!");
 }

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../utils/theme';
 import { API_URL } from '../utils/api';
+import { showAlert } from '../utils/alert';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen({ onLoginSuccess }) {
   const { theme, isDark } = useTheme();
@@ -33,17 +35,23 @@ export default function LoginScreen({ onLoginSuccess }) {
         action: 'login',
         username: employeeId,
         password: pin
-      });
+      }, { timeout: 15000 }); // Menyerah setelah 15 detik
       
       const resData = response.data;
       if (resData.status === 'success') {
         const loggedInUser = resData.data;
+        // Cache user agar auto-login bekerja
+        await AsyncStorage.setItem('@cached_user', JSON.stringify(loggedInUser));
         onLoginSuccess(loggedInUser);
       } else {
         setError(resData.message || 'Gagal login, periksa kembali ID dan PIN.');
       }
     } catch (err) {
-      setError('Gagal menghubungi server. Pastikan internet Anda aktif.');
+      if (err.code === 'ECONNABORTED') {
+        setError('Server lambat. Coba lagi dalam beberapa detik.');
+      } else {
+        setError('Gagal menghubungi server. Pastikan internet Anda aktif.');
+      }
     } finally {
       setLoading(false);
     }
@@ -73,7 +81,7 @@ export default function LoginScreen({ onLoginSuccess }) {
 
       const resData = response.data;
       if (resData.status === 'success') {
-        Alert.alert(
+        showAlert(
           "Pendaftaran Berhasil!",
           `Username Anda adalah:\n\n${regForm.username}\n\nHarap simpan Username ini baik-baik untuk Login.`,
           [{ text: "Mengerti", onPress: () => setMode('login') }]
@@ -103,7 +111,7 @@ export default function LoginScreen({ onLoginSuccess }) {
       });
       const resData = response.data;
       if (resData.status === 'success') {
-        Alert.alert('Berhasil', 'PIN baru telah dikirim ke email terdaftar Anda.');
+        showAlert('Berhasil', 'PIN baru telah dikirim ke email terdaftar Anda.');
         setMode('login');
       } else {
         setError(resData.message || 'Gagal reset PIN.');
@@ -124,10 +132,16 @@ export default function LoginScreen({ onLoginSuccess }) {
   return (
     <LinearGradient
       colors={[theme.primaryDark, theme.primary]}
-      style={styles.container}
+      style={{ flex: 1 }}
     >
-      <View style={styles.boxLogin}>
-        <View style={styles.logoContainer}>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <View style={{ flex: 1, minHeight: 40 }} />
+          <View style={styles.boxLogin}>
+            <View style={styles.logoContainer}>
           <Image source={require('../../assets/logo.png')} style={{ width: 80, height: 80, marginBottom: 10 }} resizeMode="contain" />
           <Text style={styles.appTitle}>Yayasan Elang Katulistiwa Adipavitra</Text>
           <Text style={styles.appSubtitle}>SISTEM JURNAL CLOUD</Text>
@@ -146,7 +160,7 @@ export default function LoginScreen({ onLoginSuccess }) {
               <Text style={styles.label}>Username / E-mail</Text>
               <View style={styles.inputContainer}>
                 <Ionicons name="person" size={20} color={theme.primary} style={styles.inputIcon} />
-                <TextInput style={styles.input} placeholder="Masukkan Username atau E-mail" placeholderTextColor={theme.textSecondary} value={employeeId} onChangeText={setEmployeeId} />
+                <TextInput style={styles.input} placeholder="Masukkan Username / E-mail" placeholderTextColor={theme.textSecondary} value={employeeId} onChangeText={setEmployeeId} />
               </View>
             </View>
 
@@ -225,15 +239,17 @@ export default function LoginScreen({ onLoginSuccess }) {
             </View>
           </View>
         )}
-      </View>
+          </View>
+          <View style={{ flex: 1, minHeight: 40 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 }
 
 const getStyles = (theme) => StyleSheet.create({
   container: {
-    flex: 1,
-    justifyContent: 'center',
+    flexGrow: 1,
     alignItems: 'center',
     padding: 16,
   },

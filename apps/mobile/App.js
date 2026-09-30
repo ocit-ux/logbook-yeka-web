@@ -1,25 +1,132 @@
-import React, { useState, useEffect } from 'react';
-import { View, SafeAreaView, TouchableOpacity, Text, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, TouchableOpacity, Text, StyleSheet, Alert, Platform } from 'react-native';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from './src/utils/theme';
 import { API_URL } from './src/utils/api';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import RiwayatScreen from './src/screens/RiwayatScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import AdminScreen from './src/screens/AdminScreen';
 import AdminKaryawanScreen from './src/screens/AdminKaryawanScreen';
+import { getExpoPushToken, setupNotificationReceivedListener } from './src/utils/notifications';
 
 function MainApp() {
   const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('home'); // home | history | profile
+  const [activeTab, setActiveTab] = useState('home');
+  const [authChecked, setAuthChecked] = useState(false);
+  const [deviceBlocked, setDeviceBlocked] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const ua = navigator.userAgent.toLowerCase();
+      const platform = (navigator.platform || '').toLowerCase();
+      const maxTouch = navigator.maxTouchPoints || 0;
+      
+      // JALUR RAHASIA DEVELOPER (Bypass)
+      // Tambahkan ?dev=yeka di akhir URL untuk mengakses via PC
+      const isDev = window.location.search.includes('dev=yeka');
+
+      // 1. Cek User Agent dasar
+      let isIOS = /iphone|ipad|ipod/.test(ua);
+      
+      // 2. Deteksi iPadOS 13+ (terbaca sebagai MacIntel tapi punya touch screen)
+      if (platform === 'macintel' && maxTouch > 0) {
+        isIOS = true;
+      }
+
+      // 3. Deteksi Ekstensi Mobile Simulator di PC
+      // Ekstensi PC biasanya memalsukan User-Agent, tapi lupa memalsukan hardware platform.
+      let isSimulatorPC = false;
+      if (platform.includes('win') || platform.includes('linux')) {
+        isSimulatorPC = true; // Pasti Windows atau Linux PC
+      }
+      if (platform.includes('macintel') && maxTouch === 0) {
+        isSimulatorPC = true; // Pasti Macbook/iMac biasa (karena tidak ada touch)
+      }
+
+      // 4. Deteksi Tingkat Lanjut: Chrome Developer Tools (F12) Device Emulator
+      // iPhone asli (meski pakai browser Chrome iOS sekalipun) TIDAK PERNAH memiliki objek 'window.chrome'
+      // karena Apple memaksa semua browser di iOS menggunakan mesin Safari (WebKit).
+      // Jika sistem mengaku sebagai iPhone TAPI memiliki 'window.chrome', itu PASTI PC (Emulator)!
+      if (isIOS && window.chrome !== undefined) {
+        isSimulatorPC = true;
+      }
+
+      // Jika bukan iOS, ATAU ketahuan pakai simulator PC, blokir! (Kecuali Developer)
+      if (!isDev && (!isIOS || isSimulatorPC)) {
+        setDeviceBlocked(true);
+      }
+    }
+  }, []);
 
   const isAdmin = user?.role?.toLowerCase().trim() === 'admin';
 
-  // Efek Polling untuk Sesi Ganda (60 detik agar server Google tidak down)
+  if (deviceBlocked) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#f8d7da', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <Text style={{ fontSize: 60 }}>🔒</Text>
+        <Text style={{ color: '#721c24', fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginTop: 20 }}>Akses Ditolak</Text>
+        <Text style={{ color: '#721c24', fontSize: 16, textAlign: 'center', marginTop: 10, lineHeight: 24 }}>
+          Sistem mendeteksi Anda menggunakan PC/Laptop atau Android Browser.{"\n\n"}
+          Web ini dikunci eksklusif hanya untuk pengguna iOS (Safari/iPhone). Pengguna Android diwajibkan menggunakan Aplikasi aslinya (APK).
+        </Text>
+      </View>
+    );
+  }
+
+  // Daftarkan listener anti-dobel saat app pertama buka
+  useEffect(() => {
+    const subscription = setupNotificationReceivedListener();
+    return () => subscription?.remove?.();
+  }, []);
+
+  const syncPushTokenToServer = async (targetUser) => {
+    if (!targetUser || targetUser.role === 'admin') return;
+    try {
+      const token = await getExpoPushToken();
+      if (token) {
+        await axios.post(API_URL, {
+          action: 'simpanPushToken',
+          rowIndex: targetUser.rowIndex,
+          email: targetUser.email,
+          username: targetUser.username,
+          token: token
+        });
+      }
+    } catch (e) {
+      // Silent fail on network error atau Firebase error
+    }
+  };
+
+  // Auto-login dari cache — instan tanpa perlu network
+  useEffect(() => {
+    (async () => {
+      try {
+        const cached = await AsyncStorage.getItem('@cached_user');
+        if (cached) {
+          const u = JSON.parse(cached);
+          setUser(u);
+          syncPushTokenToServer(u);
+        }
+      } catch(e) {}
+      finally { setAuthChecked(true); }
+    })();
+  }, []);
+
+  const handleLogout = async () => {
+    await AsyncStorage.removeItem('@cached_user');
+    setUser(null);
+    setActiveTab('home');
+  };
+
+  // Efek Polling untuk Sesi Ganda (120 detik)
   useEffect(() => {
     let pollTimer = null;
     if (user && !isAdmin && user.rowIndex > 0) {
@@ -28,21 +135,27 @@ function MainApp() {
           const res = await axios.post(API_URL, {
             action: 'checkSessionValid',
             rowIndex: user.rowIndex,
+            username: user.username,
             sessionId: user.sessionId
           });
           const isValid = res.data?.data?.valid;
           if (isValid === false) {
             clearInterval(pollTimer);
-            Alert.alert(
-              '⚠️ KELUAR OTOMATIS!',
-              'Akun Anda terdeteksi baru saja masuk di perangkat lain.',
-              [{ text: 'OK', onPress: () => setUser(null) }]
-            );
+            if (Platform.OS === 'web') {
+              window.alert('⚠️ KELUAR OTOMATIS!\n\nAkun Anda terdeteksi baru saja masuk di perangkat lain.');
+              setUser(null);
+            } else {
+              Alert.alert(
+                '⚠️ KELUAR OTOMATIS!',
+                'Akun Anda terdeteksi baru saja masuk di perangkat lain.',
+                [{ text: 'OK', onPress: () => setUser(null) }]
+              );
+            }
           }
         } catch (e) {
           // Abaikan jika error jaringan sesaat
         }
-      }, 60000);
+      }, 120000); // 2 menit sekali, hemat baterai & data
     }
     return () => {
       if (pollTimer) clearInterval(pollTimer);
@@ -57,31 +170,37 @@ function MainApp() {
         case 'history':
           return <AdminKaryawanScreen />;
         case 'profile':
-          return <ProfileScreen user={user} onLogout={() => setUser(null)} />;
+          return <ProfileScreen user={user} onLogout={handleLogout} onUpdateUser={setUser} />;
         default:
           return <AdminScreen />;
       }
     } else {
       switch (activeTab) {
         case 'home':
-          return <DashboardScreen user={user} onLogout={() => setUser(null)} />;
+          return <DashboardScreen user={user} onLogout={handleLogout} />;
         case 'history':
           return <RiwayatScreen user={user} />;
         case 'profile':
-          return <ProfileScreen user={user} onLogout={() => setUser(null)} />;
+          return <ProfileScreen user={user} onLogout={handleLogout} onUpdateUser={setUser} />;
         default:
           return <DashboardScreen user={user} />;
       }
     }
   };
 
-  const styles = getStyles(theme);
+  const styles = useMemo(() => getStyles(theme, insets), [theme, insets]);
+
+  // Tunggu cek cache selesai dulu agar tidak flicker ke halaman login
+  if (!authChecked) return <View style={{ flex: 1, backgroundColor: theme.background }} />;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar style={isDark ? "light" : "dark"} />
       {!user ? (
-        <LoginScreen onLoginSuccess={setUser} />
+        <LoginScreen onLoginSuccess={async (u) => {
+          setUser(u);
+          syncPushTokenToServer(u);
+        }} />
       ) : (
         <View style={{ flex: 1, backgroundColor: theme.background }}>
           {/* Main Content Area */}
@@ -98,7 +217,7 @@ function MainApp() {
                 color={activeTab === 'home' ? (isAdmin ? theme.primaryDark : theme.primary) : theme.textSecondary} 
               />
               <Text style={[styles.navText, activeTab === 'home' && { color: isAdmin ? theme.primaryDark : theme.primary, fontWeight: 'bold' }]}>
-                {isAdmin ? 'REKAP JURNAL' : 'Absen'}
+                {isAdmin ? 'REKAP JURNAL' : 'Logbook'}
               </Text>
             </TouchableOpacity>
 
@@ -130,21 +249,51 @@ function MainApp() {
   );
 }
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#f8d7da', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Text style={{ color: '#721c24', fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>CRASH TERDETEKSI</Text>
+          <Text style={{ color: '#721c24', fontSize: 14, textAlign: 'center' }}>
+            {this.state.error?.toString()}
+          </Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   return (
-    <ThemeProvider>
-      <MainApp />
-    </ThemeProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <MainApp />
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
-const getStyles = (theme) => StyleSheet.create({
+const getStyles = (theme, insets) => StyleSheet.create({
   bottomNav: {
     flexDirection: 'row',
     backgroundColor: theme.surface,
     borderTopWidth: 1,
     borderTopColor: theme.border,
-    paddingVertical: 10,
+    paddingTop: 10,
+    paddingBottom: Math.max(15, (insets?.bottom || 0)),
     paddingHorizontal: 20,
     justifyContent: 'space-around',
     elevation: 10,

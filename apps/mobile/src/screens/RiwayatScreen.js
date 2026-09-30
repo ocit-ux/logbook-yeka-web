@@ -1,27 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../utils/theme';
 import { API_URL } from '../utils/api';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function RiwayatScreen({ user }) {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [riwayat, setRiwayat] = useState([]);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchRiwayat();
-  }, []);
+  const userEmail = user?.email ? String(user.email).trim().toLowerCase() : '';
+  const CACHE_KEY = userEmail ? `@riwayat_${userEmail}` : null;
 
-  const fetchRiwayat = async () => {
+  const fetchRiwayat = useCallback(async (isRefresh = false) => {
+    if (!userEmail) return;
     try {
-      setLoading(true);
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+
+      // Tampilkan cache dulu biar instan
+      if (!isRefresh && CACHE_KEY) {
+        const cached = await AsyncStorage.getItem(CACHE_KEY);
+        if (cached) {
+          setRiwayat(JSON.parse(cached));
+          setLoading(false);
+        }
+      }
+
       const response = await axios.post(API_URL, {
         action: 'getRiwayatUser',
-        email: user?.email
-      });
+        email: userEmail
+      }, { timeout: 20000 });
 
       const resData = response.data;
       if (resData.status === 'success') {
@@ -29,26 +42,49 @@ export default function RiwayatScreen({ user }) {
         if (Array.isArray(resData.data)) safeArray = resData.data;
         else if (resData.data && Array.isArray(resData.data.data)) safeArray = resData.data.data;
         setRiwayat(safeArray);
+        if (CACHE_KEY) {
+          AsyncStorage.setItem(CACHE_KEY, JSON.stringify(safeArray));
+        }
+        setError('');
       } else {
         setError('Gagal memuat riwayat.');
       }
     } catch (err) {
-      setError('Koneksi internet bermasalah.');
+      const errorMsg = err.message || 'Koneksi internet bermasalah.';
+      if (!riwayat.length) {
+        setError(errorMsg);
+      } else {
+        alert('Gagal memperbarui: ' + errorMsg);
+      }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, [user?.email]);
+
+  useEffect(() => { fetchRiwayat(); }, [fetchRiwayat]);
 
   const safeRiwayat = Array.isArray(riwayat) ? riwayat : [];
-  const styles = getStyles(theme);
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerText}>Riwayat Jurnal Aktivitas</Text>
+        {Platform.OS === 'web' && (
+          <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => fetchRiwayat(true)} disabled={refreshing}>
+            <Ionicons name={refreshing ? "sync" : "refresh"} size={22} color="#fff" />
+          </TouchableOpacity>
+        )}
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => fetchRiwayat(true)} colors={[theme.primary]} />
+        }
+      >
         {loading ? (
           <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 50 }} />
         ) : error ? (
@@ -94,6 +130,7 @@ export default function RiwayatScreen({ user }) {
     </View>
   );
 }
+
 
 const getStyles = (theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.background },
