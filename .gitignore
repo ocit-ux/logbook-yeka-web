@@ -3,3 +3,5 @@ node_modules/
 apps/mobile/node_modules/
 apps/mobile/android/
 apps/mobile/ios/
+
+apps/mobile/dist/
