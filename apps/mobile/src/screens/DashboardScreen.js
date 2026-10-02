@@ -45,6 +45,10 @@ const JSWheelPicker = ({ items, selectedValue, onValueChange, theme }) => {
           const validIdx = Math.max(0, Math.min(items.length - 1, idx));
           if (validIdx !== activeIndex && items[validIdx]) {
             setActiveIndex(validIdx); // Update local visual state only
+            // ponytail: web lacks momentumScrollEnd; only update parent on web so Android APK stays unimpacted
+            if (Platform.OS === 'web') {
+              onValueChange(items[validIdx]);
+            }
           }
         }}
         onMomentumScrollEnd={(e) => {
