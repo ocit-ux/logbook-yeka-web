@@ -153,23 +153,26 @@ export default function DashboardScreen({ user, onLogout }) {
           showAlert('Izin Ditolak', 'Izin lokasi GPS dibutuhkan untuk absensi.');
           return;
         }
-        // Coba pakai lokasi cache dulu (instan)
         try {
           const lastLoc = await AsyncStorage.getItem('@last_known_location');
-          if (lastLoc) setLocation(JSON.parse(lastLoc)); // Tampilkan cache dulu
+          if (lastLoc) {
+            const parsedLoc = JSON.parse(lastLoc);
+            if (parsedLoc.timestamp && (Date.now() - parsedLoc.timestamp < 300000)) {
+              setLocation(parsedLoc);
+            } else {
+              await AsyncStorage.removeItem('@last_known_location');
+            }
+          }
           
-          // Cek hitungan antrean awal saat muat
           const qStr = await AsyncStorage.getItem('@offline_queue');
           if (qStr) {
             const qArr = JSON.parse(qStr);
             setSyncCount(qArr.length);
           }
         } catch(e) {}
-        // Tetap refresh di background tanpa blocking UI
         Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-          timeInterval: 5000,
-          distanceInterval: 0
+          accuracy: Location.Accuracy.High,
+          maximumAge: 10000
         }).then(loc => {
           if (isMockedLocation(loc)) {
             setIsMocked(true);
@@ -177,8 +180,9 @@ export default function DashboardScreen({ user, onLogout }) {
             return;
           }
           setIsMocked(false);
-          setLocation(loc.coords);
-          AsyncStorage.setItem('@last_known_location', JSON.stringify(loc.coords));
+          const freshCoords = { ...loc.coords, timestamp: Date.now() };
+          setLocation(freshCoords);
+          AsyncStorage.setItem('@last_known_location', JSON.stringify(freshCoords));
         }).catch(() => {});
       })(),
 
@@ -291,6 +295,9 @@ export default function DashboardScreen({ user, onLogout }) {
 
       // Ambil data pertama
       const item = queue[0];
+      if (item && item.payload && !item.payload.submissionId) {
+        item.payload.submissionId = `${item.payload.email || 'user'}_${item.id || Date.now()}`;
+      }
 
       // Kirim ke server
       const response = await axios.post(API_URL, {
@@ -349,6 +356,7 @@ export default function DashboardScreen({ user, onLogout }) {
   }, []);
 
   const submitAbsensi = async () => {
+    if (loading) return;
     if (mode === 'hadir' || (mode === 'izin' && form.kategoriIzin === 'WFH')) {
       if (!form.jamMulai || !form.jamAkhir || !form.kegiatan) {
         showAlert('Inkomplit', 'Jam mulai, selesai, dan kegiatan wajib diisi.'); return;
@@ -369,14 +377,20 @@ export default function DashboardScreen({ user, onLogout }) {
     const rooted = isRooted || (await isDeviceRooted());
     if (rooted) setIsRooted(true);
 
-    let currentCoords = location;
+    let currentCoords = (location && location.timestamp && (Date.now() - location.timestamp < 300000)) ? location : null;
     let isCurrentMocked = isMocked;
     try {
-      const freshLoc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const freshLoc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Highest,
+        maximumAge: 10000,
+        timeout: 15000
+      });
       isCurrentMocked = isMockedLocation(freshLoc);
       setIsMocked(isCurrentMocked);
-      currentCoords = freshLoc.coords;
-      setLocation(freshLoc.coords);
+      const freshCoords = { ...freshLoc.coords, timestamp: Date.now() };
+      currentCoords = freshCoords;
+      setLocation(freshCoords);
+      AsyncStorage.setItem('@last_known_location', JSON.stringify(freshCoords));
     } catch (e) {}
 
     if (!currentCoords) {
@@ -397,8 +411,10 @@ export default function DashboardScreen({ user, onLogout }) {
     const isWfh = mode === 'izin' && form.kategoriIzin === 'WFH';
     
     const deviceInfo = await getDeviceInfo();
+    const submissionId = `${user?.email || 'user'}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     
     const payload = {
+        submissionId,
         nama: user?.nama || "Test User",
         email: user?.email || "test@test.com",
         telepon: user?.telepon || "-",

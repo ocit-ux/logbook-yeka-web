@@ -28,7 +28,7 @@ const ADMIN_USERNAME = 'admin.yeka@mail.or.id';
 const ADMIN_PASSWORD = '@AdminYeka2026#';
 
 const USERS_HEADERS = ['Nama', 'Email', 'Telepon', 'Divisi', 'Jabatan', 'Username', 'Password', 'Role', 'SessionId', 'FotoProfil', 'ExpoPushToken'];
-const ABSENSI_HEADERS = ['Timestamp', 'Nama', 'Email', 'Telepon', 'Jabatan', 'Divisi', 'Status', 'JamMulai', 'JamAkhir', 'Kegiatan', 'HasilKegiatan', 'IzinSakit', 'GPS', 'FotoURL', 'Device', 'Tanggal', 'Bulan', 'Tahun', 'StatusKeamanan'];
+const ABSENSI_HEADERS = ['Timestamp', 'Nama', 'Email', 'Telepon', 'Jabatan', 'Divisi', 'Status', 'JamMulai', 'JamAkhir', 'Kegiatan', 'HasilKegiatan', 'IzinSakit', 'GPS', 'FotoURL', 'Device', 'Tanggal', 'Bulan', 'Tahun', 'StatusKeamanan', 'SubmissionId', 'Desa', 'Kecamatan', 'Kabupaten'];
 
 // ==== DIAGNOSTIK ====
 // Jalankan manual dari editor (pilih fungsi ini di dropdown -> Run), lihat di
@@ -171,24 +171,22 @@ function sheetToObjects_(sheet) {
   const data = sheet.getDataRange().getValues();
   if (!data || data.length < 2) return [];
   const headers = data[0].map(h => String(h).trim());
+  const isJamCol = headers.map(h => h.toLowerCase().includes('jam'));
+  const tz = Session.getScriptTimeZone() || 'GMT+7';
   const rows = data.slice(1).filter(row => row.some(cell => cell !== '' && cell !== null));
   return rows.map(row => {
     const obj = {};
-    headers.forEach((h, i) => {
+    for (let i = 0; i < headers.length; i++) {
       let val = row[i];
       if (val instanceof Date || (val && typeof val.getTime === 'function') || Object.prototype.toString.call(val) === '[object Date]') {
         try {
-          if (String(h).toLowerCase().includes('jam')) {
-            val = Utilities.formatDate(val, Session.getScriptTimeZone() || 'GMT+7', 'HH:mm:ss');
-          } else {
-            val = Utilities.formatDate(val, Session.getScriptTimeZone() || 'GMT+7', 'dd-MM-yyyy HH:mm:ss');
-          }
+          val = Utilities.formatDate(val, tz, isJamCol[i] ? 'HH:mm:ss' : 'dd-MM-yyyy HH:mm:ss');
         } catch (e) {
           val = String(val);
         }
       }
-      obj[h] = val;
-    });
+      obj[headers[i]] = val;
+    }
     return obj;
   });
 }
@@ -271,9 +269,9 @@ function doLogin(usernameEmail, password) {
 }
 
 // Dipanggil client secara berkala buat cek sesi ganda (pengganti onSnapshot Firestore)
-function checkSessionValid(username, sessionId) {
-  if (!username) return true;
-  if (username === ADMIN_USERNAME) return true;
+function checkSessionValid(userOrRow, sessionId) {
+  if (!userOrRow) return true;
+  if (userOrRow === ADMIN_USERNAME || userOrRow === -1 || userOrRow === '-1') return true;
   
   const sheet = getSheet_(SHEET_USERS);
   const data = sheet.getDataRange().getValues();
@@ -284,9 +282,14 @@ function checkSessionValid(username, sessionId) {
   const sesiCol = headers.indexOf('SessionId');
   
   if (userCol < 0 || sesiCol < 0) return true; // Fail-safe
+
+  const asRow = Number(userOrRow);
+  if (Number.isInteger(asRow) && asRow >= 2 && asRow <= data.length) {
+    return String(data[asRow - 1][sesiCol]) === String(sessionId);
+  }
   
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][userCol]).toLowerCase() === String(username).toLowerCase()) {
+    if (String(data[i][userCol]).toLowerCase() === String(userOrRow).toLowerCase()) {
       return String(data[i][sesiCol]) === String(sessionId);
     }
   }
@@ -431,15 +434,174 @@ function simpanFotoKeDriveProfil_(base64Data, namaFile) {
   return 'https://lh3.googleusercontent.com/d/' + file.getId();
 }
 
+
+// Reverse geocode koordinat GPS menjadi Desa, Kecamatan, Kabupaten
+function getWilayahDariGPS_(gpsStr) {
+  const def = { desa: '-', kecamatan: '-', kabupaten: '-' };
+  if (!gpsStr || gpsStr === '-') return def;
+  try {
+    const parts = String(gpsStr).split(',');
+    if (parts.length < 2) return def;
+    const lat = parseFloat(parts[0].trim());
+    const lng = parseFloat(parts[1].trim());
+    if (isNaN(lat) || isNaN(lng)) return def;
+
+    const res = Maps.newGeocoder().setLanguage('id').reverseGeocode(lat, lng);
+    if (!res || !res.results || !res.results.length) return def;
+
+    let desa = '-', kecamatan = '-', kabupaten = '-';
+    for (let i = 0; i < res.results.length; i++) {
+      const comps = res.results[i].address_components || [];
+      for (let j = 0; j < comps.length; j++) {
+        const c = comps[j];
+        const t = c.types || [];
+        if (desa === '-' && (t.indexOf('administrative_area_level_4') !== -1 || t.indexOf('sublocality_level_1') !== -1)) {
+          desa = c.long_name;
+        }
+        if (kecamatan === '-' && (t.indexOf('administrative_area_level_3') !== -1 || t.indexOf('locality') !== -1)) {
+          kecamatan = c.long_name;
+        }
+        if (kabupaten === '-' && t.indexOf('administrative_area_level_2') !== -1) {
+          kabupaten = c.long_name;
+        }
+      }
+      if (desa !== '-' && kecamatan !== '-' && kabupaten !== '-') break;
+    }
+    return { desa: desa, kecamatan: kecamatan, kabupaten: kabupaten };
+  } catch (e) {
+    Logger.log('getWilayahDariGPS_ error: ' + e.message);
+    return def;
+  }
+}
+
+// Jalankan manual dari editor Apps Script untuk mengisi Desa, Kecamatan, Kabupaten pada baris data lama
+function isiWilayahDataLama() {
+  const startTime = Date.now();
+  const sheet = getSheet_(SHEET_ABSENSI);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    Logger.log('Tidak ada baris data untuk diproses.');
+    return;
+  }
+
+  const extraCols = ['StatusKeamanan', 'SubmissionId', 'Desa', 'Kecamatan', 'Kabupaten'];
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+  extraCols.forEach(col => {
+    if (headers.indexOf(col) === -1) {
+      sheet.getRange(1, headers.length + 1).setValue(col);
+      headers.push(col);
+    }
+  });
+
+  const idxGps = headers.indexOf('GPS');
+  const idxDesa = headers.indexOf('Desa');
+  const idxKec = headers.indexOf('Kecamatan');
+  const idxKab = headers.indexOf('Kabupaten');
+
+  if (idxGps === -1 || idxDesa === -1 || idxKec === -1 || idxKab === -1) {
+    throw new Error('Kolom GPS atau Desa/Kecamatan/Kabupaten tidak ditemukan.');
+  }
+
+  const numRows = lastRow - 1;
+  const totalCols = headers.length;
+  const dataRange = sheet.getRange(2, 1, numRows, totalCols);
+  const values = dataRange.getValues();
+
+  const coordCache = {};
+  let updatedCount = 0;
+
+  for (let i = 0; i < values.length; i++) {
+    // Berhenti aman jika waktu jalan mendekati 4.5 menit (batas GAS 6 menit)
+    if (Date.now() - startTime > 270000) {
+      Logger.log('Batas waktu eksekusi mendekati penuh. Menyimpan progres sementara...');
+      break;
+    }
+
+    const row = values[i];
+    const existingDesa = String(row[idxDesa] || '').trim();
+    const existingKec = String(row[idxKec] || '').trim();
+    const existingKab = String(row[idxKab] || '').trim();
+
+    if (existingDesa !== '' && existingDesa !== '-' && existingKec !== '' && existingKab !== '') {
+      continue;
+    }
+
+    const gpsStr = String(row[idxGps] || '').trim();
+    if (!gpsStr || gpsStr === '-') {
+      row[idxDesa] = '-';
+      row[idxKec] = '-';
+      row[idxKab] = '-';
+      continue;
+    }
+
+    const parts = gpsStr.split(',');
+    const cacheKey = parts.length >= 2
+      ? parseFloat(parts[0]).toFixed(4) + ',' + parseFloat(parts[1]).toFixed(4)
+      : gpsStr;
+
+    let wilayah = coordCache[cacheKey];
+    if (!wilayah) {
+      wilayah = getWilayahDariGPS_(gpsStr);
+      coordCache[cacheKey] = wilayah;
+      Utilities.sleep(150); // Jeda ringan agar aman dari kuota per detik Google Maps
+    }
+
+    row[idxDesa] = wilayah.desa;
+    row[idxKec] = wilayah.kecamatan;
+    row[idxKab] = wilayah.kabupaten;
+    updatedCount++;
+  }
+
+  if (updatedCount > 0) {
+    dataRange.setValues(values);
+    SpreadsheetApp.flush();
+  }
+  Logger.log('isiWilayahDataLama selesai. Baris berhasil dilengkapi: ' + updatedCount);
+}
+
 // ==== SUBMIT ABSENSI ====
 function submitAttendance(data) {
   if (!data || !data.nama || !data.email) throw new Error('Data absensi tidak lengkap (nama/email kosong).');
 
   const sheet = getSheet_(SHEET_ABSENSI);
   const tgl = new Date();
+
+  // Validasi idempotensi: cegah duplikat sebelum upload foto atau insert baris
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    const startRow = Math.max(2, lastRow - 50);
+    const numRows = lastRow - startRow + 1;
+    const lastCols = sheet.getLastColumn();
+    const recentRows = sheet.getRange(startRow, 1, numRows, lastCols).getValues();
+
+    const tglHariIni = tgl.getDate();
+    const blnHariIni = Utilities.formatDate(tgl, Session.getScriptTimeZone() || 'GMT+7', 'MMMM');
+    const thnHariIni = tgl.getFullYear();
+
+    const isDuplicate = recentRows.some(r => {
+      if (data.submissionId && r.some(cell => String(cell).trim() === String(data.submissionId).trim())) {
+        return true;
+      }
+      const emailCocok = String(r[2] || '').trim().toLowerCase() === String(data.email || '').trim().toLowerCase();
+      const jamCocok = String(r[7] || '').trim() === String(data.jamMulai || '').trim();
+      const kegiatanCocok = String(r[9] || '').trim() === String(data.kegiatan || '').trim();
+      const tglCocok = Number(r[15]) === tglHariIni && String(r[16] || '').trim() === blnHariIni && Number(r[17]) === thnHariIni;
+      return emailCocok && jamCocok && kegiatanCocok && tglCocok;
+    });
+
+    if (isDuplicate) {
+      Logger.log('submitAttendance -> Duplikat terdeteksi, abaikan insert: ' + (data.submissionId || data.kegiatan));
+      return { success: true, duplicate: true };
+    }
+  }
   
-  // VALIDASI DUPLIKAT FOTO
+  // VALIDASI FOTO BLANK HITAM / DUPLIKAT FOTO
   if (data.foto && data.foto.length > 100) {
+    const cleanB64 = data.foto.indexOf(',') > -1 ? data.foto.split(',')[1] : data.foto;
+    // Foto 1000px hitam pekat murni menghasilkan JPEG < 5.500 karakter base64 karena blok DCT bernilai nol seragam
+    if (cleanB64.length < 5500) {
+      throw new Error('Foto terdeteksi hitam/gelap total (kamera belum siap). Silakan ambil ulang foto kegiatan.');
+    }
     const base64Tail = data.foto.substring(data.foto.length - 200); 
     const cache = CacheService.getScriptCache();
     const isDuplicate = cache.get(base64Tail);
@@ -450,16 +612,20 @@ function submitAttendance(data) {
     cache.put(base64Tail, 'true', 86400);
   }
 
-  // Pastikan kolom StatusKeamanan ada di header sheet
+  const extraCols = ['StatusKeamanan', 'SubmissionId', 'Desa', 'Kecamatan', 'Kabupaten'];
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
-  if (headers.indexOf('StatusKeamanan') === -1) {
-    sheet.getRange(1, headers.length + 1).setValue('StatusKeamanan');
-  }
+  extraCols.forEach(col => {
+    if (headers.indexOf(col) === -1) {
+      sheet.getRange(1, headers.length + 1).setValue(col);
+      headers.push(col);
+    }
+  });
 
   const namaFile = String(data.nama || 'user').replace(/\s+/g, '_') + '_' + tgl.getTime();
   const fotoURL = simpanFotoKeDrive_(data.foto, namaFile);
 
   const statusKeamanan = String(data.statusKeamanan || 'AMAN (GPS Asli)').trim();
+  const wilayah = getWilayahDariGPS_(data.gps);
 
   const rowBaru = [
     tgl, data.nama, data.email, data.telepon ? "'" + String(data.telepon).trim() : '-', data.jabatan, data.devisi,
@@ -467,8 +633,13 @@ function submitAttendance(data) {
     data.hasil_kegiatan || '-', data.izin_sakit || '-', data.gps || '-',
     fotoURL, data.device || '-', tgl.getDate(),
     Utilities.formatDate(tgl, Session.getScriptTimeZone() || 'GMT+7', 'MMMM'), tgl.getFullYear(),
-    statusKeamanan
+    statusKeamanan,
+    String(data.submissionId || '').trim(),
+    wilayah.desa,
+    wilayah.kecamatan,
+    wilayah.kabupaten
   ];
+
   Logger.log('submitAttendance -> menulis ke sheet ' + sheet.getName() + ' di spreadsheet ' + SPREADSHEET_ID + ': ' + JSON.stringify(rowBaru));
   sheet.appendRow(rowBaru);
   SpreadsheetApp.flush();

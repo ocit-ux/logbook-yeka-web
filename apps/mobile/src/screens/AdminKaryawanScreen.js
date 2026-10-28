@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TextInput } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TextInput, Platform } from 'react-native';
 import { useTheme } from '../utils/theme';
 import { API_URL } from '../utils/api';
 import axios from 'axios';
@@ -39,16 +39,32 @@ export default function AdminKaryawanScreen() {
     }
   };
 
-  const safeKaryawan = Array.isArray(karyawan) ? karyawan : [];
-  const filteredData = safeKaryawan.filter(item => {
-    const s = search.toLowerCase();
-    return (
+  const filteredData = useMemo(() => {
+    const safeKaryawan = Array.isArray(karyawan) ? karyawan : [];
+    const s = search.trim().toLowerCase();
+    if (!s) return safeKaryawan;
+    return safeKaryawan.filter(item =>
       String(item.Nama || '').toLowerCase().includes(s) ||
       String(item.Username || '').toLowerCase().includes(s)
     );
-  });
+  }, [karyawan, search]);
 
-  const styles = getStyles(theme);
+  const styles = useMemo(() => getStyles(theme), [theme]);
+
+  const renderItem = useCallback(({ item }) => (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <Text style={styles.nama}>{item.Nama}</Text>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{item.Username}</Text>
+        </View>
+      </View>
+      <Text style={styles.label}>Email / Telepon:</Text>
+      <Text style={styles.value}>{item.Email} | {item.Telepon}</Text>
+      <Text style={styles.label}>Divisi - Jabatan:</Text>
+      <Text style={styles.value}>{item.Divisi} - {item.Jabatan}</Text>
+    </View>
+  ), [styles]);
 
   return (
     <View style={styles.container}>
@@ -68,39 +84,31 @@ export default function AdminKaryawanScreen() {
         />
       </View>
 
-      <ScrollView style={styles.content}>
-        {loading ? (
-          <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 50 }} />
-        ) : error ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="warning-outline" size={60} color={theme.textSecondary} />
-            <Text style={styles.emptyText}>{error}</Text>
-          </View>
-        ) : filteredData.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="people-outline" size={60} color={theme.textSecondary} />
-            <Text style={styles.emptyText}>Tidak ada karyawan ditemukan.</Text>
-          </View>
-        ) : (
-          filteredData.map((item, index) => (
-            <View key={index} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.nama}>{item.Nama}</Text>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{item.Username}</Text>
-                </View>
-              </View>
-              
-              <Text style={styles.label}>Email / Telepon:</Text>
-              <Text style={styles.value}>{item.Email} | {item.Telepon}</Text>
-              
-              <Text style={styles.label}>Divisi - Jabatan:</Text>
-              <Text style={styles.value}>{item.Divisi} - {item.Jabatan}</Text>
+      {loading ? (
+        <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 50 }} />
+      ) : error ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="warning-outline" size={60} color={theme.textSecondary} />
+          <Text style={styles.emptyText}>{error}</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredData}
+          keyExtractor={(item, index) => item.Username || item.Email || String(index)}
+          renderItem={renderItem}
+          contentContainerStyle={[styles.content, { paddingBottom: 40 }]}
+          initialNumToRender={12}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS !== 'web'}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="people-outline" size={60} color={theme.textSecondary} />
+              <Text style={styles.emptyText}>Tidak ada karyawan ditemukan.</Text>
             </View>
-          ))
-        )}
-        <View style={{ height: 40 }} />
-      </ScrollView>
+          }
+        />
+      )}
     </View>
   );
 }

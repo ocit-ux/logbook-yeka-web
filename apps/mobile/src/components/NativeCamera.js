@@ -11,6 +11,7 @@ export default function NativeCamera({ onCapture, onClose }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState('back');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isCameraReady, setIsCameraReady] = useState(false);
   const cameraRef = useRef(null);
   const insets = useSafeAreaInsets();
 
@@ -40,17 +41,20 @@ export default function NativeCamera({ onCapture, onClose }) {
   }
 
   const toggleCameraFacing = () => {
+    setIsCameraReady(false);
     setFacing(current => (current === 'back' ? 'front' : 'back'));
   };
 
   const takePicture = async () => {
-    if (cameraRef.current && !isProcessing) {
+    if (cameraRef.current && isCameraReady && !isProcessing) {
       try {
         setIsProcessing(true);
-        // Jepret tanpa kompresi berat dari native dulu
+        // Beri jeda singkat 150ms agar pipeline auto-exposure Camera2 OPPO/ColorOS stabil
+        await new Promise(r => setTimeout(r, 150));
         const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
+          quality: 0.85,
           base64: false,
+          skipProcessing: false,
           shutterSound: false,
         });
 
@@ -60,6 +64,13 @@ export default function NativeCamera({ onCapture, onClose }) {
           [{ resize: { width: 1000 } }],
           { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
         );
+
+        // ponytail: solid-black JPEG (1000px @ 0.7) compresses to <4KB base64 due to uniform zero DCT blocks; real camera photos are 35KB-180KB
+        if (!manipResult.base64 || manipResult.base64.length < 6000) {
+          setIsProcessing(false);
+          alert('Kamera belum siap menangkap cahaya (hasil foto gelap/hitam). Mohon tunggu 1 detik lalu tekan tombol potret lagi.');
+          return;
+        }
 
         onCapture(manipResult);
       } catch (e) {
@@ -71,39 +82,44 @@ export default function NativeCamera({ onCapture, onClose }) {
 
   return (
     <View style={styles.container}>
-      <CameraView style={styles.camera} facing={facing} ref={cameraRef}>
-        
-        {/* Top Bar */}
-        <View style={styles.topBar}>
-          <TouchableOpacity style={styles.iconBtn} onPress={onClose}>
-            <Ionicons name="close" size={30} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Kamera Absensi</Text>
-          <TouchableOpacity style={styles.iconBtn} onPress={toggleCameraFacing}>
-            <Ionicons name="camera-reverse" size={30} color="#fff" />
-          </TouchableOpacity>
+      <CameraView
+        style={styles.camera}
+        facing={facing}
+        ref={cameraRef}
+        onCameraReady={() => setIsCameraReady(true)}
+      />
+
+      {/* Top Bar (di luar CameraView agar surface Android tidak tertutup layer hitam) */}
+      <View style={styles.topBar}>
+        <TouchableOpacity style={styles.iconBtn} onPress={onClose}>
+          <Ionicons name="close" size={30} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Kamera Absensi</Text>
+        <TouchableOpacity style={styles.iconBtn} onPress={toggleCameraFacing}>
+          <Ionicons name="camera-reverse" size={30} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Loading Overlay */}
+      {(isProcessing || !isCameraReady) && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={{ color: '#fff', marginTop: 10 }}>
+            {isProcessing ? 'Memproses Foto...' : 'Menyiapkan Lensa Kamera...'}
+          </Text>
         </View>
+      )}
 
-        {/* Loading Overlay */}
-        {isProcessing && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#fff" />
-            <Text style={{ color: '#fff', marginTop: 10 }}>Memproses Foto...</Text>
-          </View>
-        )}
-
-        {/* Bottom Bar */}
-        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-          <TouchableOpacity 
-            style={styles.shutterBtn} 
-            onPress={takePicture}
-            disabled={isProcessing}
-          >
-            <View style={styles.shutterInner} />
-          </TouchableOpacity>
-        </View>
-
-      </CameraView>
+      {/* Bottom Bar */}
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+        <TouchableOpacity 
+          style={[styles.shutterBtn, (!isCameraReady || isProcessing) && { opacity: 0.5 }]} 
+          onPress={takePicture}
+          disabled={!isCameraReady || isProcessing}
+        >
+          <View style={styles.shutterInner} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }

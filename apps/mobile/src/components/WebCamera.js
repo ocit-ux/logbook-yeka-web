@@ -111,6 +111,10 @@ export default function WebCamera({ onCapture, onClose, theme }) {
   const takePhoto = () => {
     if (!videoRef.current) return;
     const video = videoRef.current;
+    if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+      alert('Lensa kamera sedang memuat gambar. Tunggu 1 detik lalu tekan potret lagi.');
+      return;
+    }
     
     // Gunakan dimensi asli video agar tidak melar
     const canvas = document.createElement('canvas');
@@ -135,6 +139,19 @@ export default function WebCamera({ onCapture, onClose, theme }) {
     if (isFrontCamera) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
+
+    // Cek sampel piksel agar tidak mengirim frame hitam kosong
+    try {
+      const sample = ctx.getImageData(Math.floor(canvas.width / 4), Math.floor(canvas.height / 4), Math.min(32, canvas.width), Math.min(32, canvas.height)).data;
+      let brightPixels = 0;
+      for (let i = 0; i < sample.length; i += 4) {
+        if (sample[i] > 12 || sample[i + 1] > 12 || sample[i + 2] > 12) brightPixels++;
+      }
+      if (brightPixels === 0) {
+        alert('Kamera belum siap menangkap cahaya (hasil foto gelap/hitam). Mohon tunggu 1 detik lalu potret ulang.');
+        return;
+      }
+    } catch (e) {}
     
     // Kompresi (0.4) agar cepat di-upload tapi tetap jernih
     const base64Full = canvas.toDataURL('image/jpeg', 0.4);

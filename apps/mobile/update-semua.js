@@ -19,7 +19,8 @@ try {
   originalAppJson = fs.readFileSync(appJsonPath, 'utf8');
   const appConfig = JSON.parse(originalAppJson);
 
-  const msg = process.argv[2] || "Update Otomatis";
+  const rawMsg = process.argv[2] || "Update Otomatis";
+  const msg = rawMsg.replace(/^["']|["']$/g, '');
   console.log(`\n🚀 MEMULAI UPDATE GHAIB (Pesan: "${msg}")...\n`);
 
   // ==========================================

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput, Modal } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Alert, TextInput, Modal, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../utils/theme';
 import { API_URL } from '../utils/api';
@@ -67,7 +67,7 @@ export default function AdminScreen() {
         if (Array.isArray(resData.data)) safeArray = resData.data;
         else if (resData.data && Array.isArray(resData.data.data)) safeArray = resData.data.data;
         setAbsensi(safeArray);
-        AsyncStorage.setItem('@admin_absensi_cache', JSON.stringify(safeArray));
+        AsyncStorage.setItem('@admin_absensi_cache', JSON.stringify(safeArray.slice(0, 100))).catch(() => {});
       } else if (!cached) {
         setError('Gagal memuat data absensi.');
       }
@@ -78,29 +78,35 @@ export default function AdminScreen() {
     }
   };
 
-  const safeAbsensi = Array.isArray(absensi) ? absensi : [];
-  
-  const filteredData = safeAbsensi.filter(item => {
-    const s = search.toLowerCase();
-    const matchesSearch = String(item.Nama || '').toLowerCase().includes(s) || 
-                          String(item.Kegiatan || '').toLowerCase().includes(s);
-    
-    let matchesTime = true;
-    if (filterDate) {
-      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-      matchesTime = String(item.Tanggal) === String(filterDate.getDate()) && 
-                    String(item.Bulan) === months[filterDate.getMonth()] && 
-                    String(item.Tahun) === String(filterDate.getFullYear());
-    } else if (filterBulan) {
-      const [fMonth, fYear] = filterBulan.split('-');
-      matchesTime = String(item.Bulan) === fMonth && String(item.Tahun) === fYear;
+  const filteredData = useMemo(() => {
+    const safeAbsensi = Array.isArray(absensi) ? absensi : [];
+    const s = search.trim().toLowerCase();
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    return safeAbsensi.filter(item => {
+      const matchesSearch = !s || String(item.Nama || '').toLowerCase().includes(s) || String(item.Kegiatan || '').toLowerCase().includes(s);
+      if (!matchesSearch) return false;
+      if (filterDate) {
+        return String(item.Tanggal) === String(filterDate.getDate()) &&
+               String(item.Bulan) === months[filterDate.getMonth()] &&
+               String(item.Tahun) === String(filterDate.getFullYear());
+      }
+      if (filterBulan) {
+        const [fMonth, fYear] = filterBulan.split('-');
+        return String(item.Bulan) === fMonth && String(item.Tahun) === fYear;
+      }
+      return true;
+    });
+  }, [absensi, search, filterDate, filterBulan]);
+
+  const { totalHadir, totalIzin } = useMemo(() => {
+    let hadir = 0, izin = 0;
+    for (let i = 0; i < filteredData.length; i++) {
+      const st = filteredData[i].Status;
+      if (st === 'HADIR') hadir++;
+      else if (st === 'IZIN' || st === 'SAKIT') izin++;
     }
-
-    return matchesSearch && matchesTime;
-  });
-
-  const totalHadir = filteredData.filter(i => i.Status === 'HADIR').length;
-  const totalIzin = filteredData.filter(i => i.Status === 'IZIN' || i.Status === 'SAKIT').length;
+    return { totalHadir: hadir, totalIzin: izin };
+  }, [filteredData]);
 
   const exportPDF = async () => {
     if (filteredData.length === 0) {
@@ -219,7 +225,35 @@ export default function AdminScreen() {
     );
   };
 
-  const styles = getStyles(theme);
+  const styles = useMemo(() => getStyles(theme), [theme]);
+
+  const renderItem = useCallback(({ item }) => (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <Text style={styles.nama}>{item.Nama}</Text>
+        <View style={[styles.badge, { backgroundColor: item.Status === 'HADIR' ? theme.success : item.Status === 'IZIN' ? theme.error : theme.primary }]}>
+          <Text style={styles.badgeText}>{item.Status}</Text>
+        </View>
+      </View>
+      <Text style={styles.tanggal}>{item.Tanggal} {item.Bulan} {item.Tahun} ({item.JamMulai} - {item.JamAkhir})</Text>
+      <Text style={styles.label}>Kegiatan:</Text>
+      <Text style={styles.value}>{item.Kegiatan}</Text>
+      <Text style={styles.label}>Hasil:</Text>
+      <Text style={styles.value}>{item.HasilKegiatan}</Text>
+      {item.IzinSakit && item.IzinSakit !== '-' && (
+        <>
+          <Text style={styles.label}>Ket Izin/Sakit:</Text>
+          <Text style={styles.value}>{item.IzinSakit}</Text>
+        </>
+      )}
+      {item.StatusKeamanan && item.StatusKeamanan.includes('TERDETEKSI') && (
+        <View style={{ backgroundColor: '#fee2e2', borderColor: '#ef4444', borderWidth: 1, padding: 8, borderRadius: 8, marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
+          <Ionicons name="warning" size={16} color="#b91c1c" style={{ marginRight: 6 }} />
+          <Text style={{ color: '#b91c1c', fontSize: 12, fontWeight: 'bold' }}>{item.StatusKeamanan}</Text>
+        </View>
+      )}
+    </View>
+  ), [styles, theme]);
 
   return (
     <View style={styles.container}>
@@ -307,55 +341,32 @@ export default function AdminScreen() {
         </View>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {loading ? (
-          <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 50 }} />
-        ) : error ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="warning-outline" size={60} color={theme.textSecondary} />
-            <Text style={styles.emptyText}>{error}</Text>
-          </View>
-        ) : filteredData.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="document-text-outline" size={60} color={theme.textSecondary} />
-            <Text style={styles.emptyText}>Tidak ada data yang ditemukan.</Text>
-          </View>
-        ) : (
-          filteredData.map((item, index) => (
-            <View key={index} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.nama}>{item.Nama}</Text>
-                <View style={[styles.badge, { backgroundColor: item.Status === 'HADIR' ? theme.success : item.Status === 'IZIN' ? theme.error : theme.primary }]}>
-                  <Text style={styles.badgeText}>{item.Status}</Text>
-                </View>
-              </View>
-              
-              <Text style={styles.tanggal}>{item.Tanggal} {item.Bulan} {item.Tahun} ({item.JamMulai} - {item.JamAkhir})</Text>
-              
-              <Text style={styles.label}>Kegiatan:</Text>
-              <Text style={styles.value}>{item.Kegiatan}</Text>
-
-              <Text style={styles.label}>Hasil:</Text>
-              <Text style={styles.value}>{item.HasilKegiatan}</Text>
-              
-              {item.IzinSakit && item.IzinSakit !== '-' && (
-                <>
-                  <Text style={styles.label}>Ket Izin/Sakit:</Text>
-                  <Text style={styles.value}>{item.IzinSakit}</Text>
-                </>
-              )}
-
-              {item.StatusKeamanan && item.StatusKeamanan.includes('TERDETEKSI') && (
-                <View style={{ backgroundColor: '#fee2e2', borderColor: '#ef4444', borderWidth: 1, padding: 8, borderRadius: 8, marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="warning" size={16} color="#b91c1c" style={{ marginRight: 6 }} />
-                  <Text style={{ color: '#b91c1c', fontSize: 12, fontWeight: 'bold' }}>{item.StatusKeamanan}</Text>
-                </View>
-              )}
+      {loading ? (
+        <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 50 }} />
+      ) : error ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="warning-outline" size={60} color={theme.textSecondary} />
+          <Text style={styles.emptyText}>{error}</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredData}
+          keyExtractor={(item, index) => item.SubmissionId || `${item.Email}_${item.Timestamp}_${index}`}
+          renderItem={renderItem}
+          contentContainerStyle={[styles.content, { paddingBottom: 40 }]}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={12}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS !== 'web'}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="document-text-outline" size={60} color={theme.textSecondary} />
+              <Text style={styles.emptyText}>Tidak ada data yang ditemukan.</Text>
             </View>
-          ))
-        )}
-        <View style={{ height: 40 }} />
-      </ScrollView>
+          }
+        />
+      )}
     </View>
   );
 }

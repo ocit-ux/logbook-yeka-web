@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Alert, Platform } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { View, TouchableOpacity, Text, StyleSheet, Alert, Platform, AppState } from 'react-native';
+import * as Updates from 'expo-updates';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -81,10 +82,33 @@ function MainApp() {
     );
   }
 
-  // Daftarkan listener anti-dobel saat app pertama buka
+  const lastUpdateCheckRef = useRef(0);
+
   useEffect(() => {
-    const subscription = setupNotificationReceivedListener();
-    return () => subscription?.remove?.();
+    const checkAutoUpdate = async () => {
+      if (Platform.OS === 'web' || __DEV__) return;
+      const now = Date.now();
+      if (now - lastUpdateCheckRef.current < 60000) return;
+      lastUpdateCheckRef.current = now;
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+        }
+      } catch (e) {}
+    };
+
+    checkAutoUpdate();
+    const appStateSub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') checkAutoUpdate();
+    });
+    const notifSub = setupNotificationReceivedListener();
+
+    return () => {
+      appStateSub?.remove?.();
+      notifSub?.remove?.();
+    };
   }, []);
 
   const syncPushTokenToServer = async (targetUser) => {
