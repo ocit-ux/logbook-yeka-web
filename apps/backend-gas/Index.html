@@ -47,6 +47,27 @@
         .text-katulistiwa-gold { color: #d4af37; }
         .border-katulistiwa { border-color: #1b4d3e; }
         .hover-katulistiwa:hover { background-color: #143a2e; }
+        .ent-card { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 14px; box-shadow: 0 4px 16px -4px rgba(15,23,42,0.06); overflow: hidden; }
+        .ent-scroll { overflow-x: auto; max-height: 75vh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #94a3b8 #f1f5f9; }
+        .ent-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+        .ent-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+        .ent-scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 999px; }
+        .ent-scroll::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .ent-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; color: #1e293b; }
+        .ent-table thead th { position: sticky; top: 0; z-index: 20; background: #0f2e24; color: #f8fafc; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; padding: 11px 14px; border-bottom: 2px solid #d4af37; border-right: 1px solid rgba(255,255,255,0.09); text-align: left; }
+        .ent-table thead th:last-child { border-right: none; }
+        .ent-table tbody td { padding: 11px 14px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #f1f5f9; vertical-align: top; line-height: 1.5; }
+        .ent-table tbody td:last-child { border-right: none; }
+        .ent-table tbody tr:nth-child(odd) { background-color: #ffffff; }
+        .ent-table tbody tr:nth-child(even) { background-color: #f8fafc; }
+        .ent-table tbody tr:hover { background-color: #ecfdf5 !important; }
+        .ent-sticky-col { position: sticky; left: 0; z-index: 10; border-right: 1px solid #cbd5e1 !important; box-shadow: 3px 0 6px -3px rgba(15,23,42,0.12); }
+        .ent-table tbody tr:nth-child(odd) .ent-sticky-col { background-color: #ffffff; }
+        .ent-table tbody tr:nth-child(even) .ent-sticky-col { background-color: #f8fafc; }
+        .ent-table tbody tr:hover .ent-sticky-col { background-color: #ecfdf5; }
+        .ent-table thead th.ent-sticky-col { z-index: 30; background: #0a211a; }
+        .ent-num { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; white-space: nowrap; }
+        .ent-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2.5px 8px; border-radius: 6px; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
     </style>
 </head>
 <body class="bg-[#f8faf9] font-sans min-h-screen">
@@ -331,21 +352,23 @@
                     <h2 class="text-xl font-bold text-gray-800">Riwayat Jurnal Aktivitas Anda</h2>
                     <p class="text-xs text-gray-400 mt-0.5">Daftar riwayat log tugas mandiri yang telah masuk sistem.</p>
                 </div>
-                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
-                    <table class="w-full text-left text-xs min-w-[1000px]">
-                        <thead class="bg-gray-100 text-gray-700 font-bold border-b">
-                            <tr>
-                                <th class="p-4">Tanggal</th>
-                                <th class="p-4">Jam Tugas</th>
-                                <th class="p-4">Kegiatan / Izin</th>
-                                <th class="p-4">Hasil / Output</th>
-                                <th class="p-4">GPS</th>
-                                <th class="p-4">Wilayah (Desa / Kec / Kab)</th>
-                                <th class="p-4 text-center">Foto</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-user-riwayat" class="divide-y text-gray-600"></tbody>
-                    </table>
+                <div class="ent-card">
+                    <div class="ent-scroll">
+                        <table class="ent-table min-w-[1000px]">
+                            <thead>
+                                <tr>
+                                    <th style="min-width: 130px;"><i class="fa-regular fa-calendar mr-1.5 text-emerald-300"></i>Tanggal</th>
+                                    <th style="min-width: 125px;"><i class="fa-regular fa-clock mr-1.5 text-emerald-300"></i>Jam Tugas</th>
+                                    <th style="min-width: 220px;"><i class="fa-solid fa-list-check mr-1.5 text-emerald-300"></i>Kegiatan / Izin</th>
+                                    <th style="min-width: 220px;"><i class="fa-solid fa-square-poll-vertical mr-1.5 text-emerald-300"></i>Hasil / Output</th>
+                                    <th style="min-width: 140px;"><i class="fa-solid fa-location-crosshairs mr-1.5 text-emerald-300"></i>Koordinat GPS</th>
+                                    <th style="min-width: 180px;"><i class="fa-solid fa-map-location-dot mr-1.5 text-emerald-300"></i>Wilayah (Desa/Kec/Kab)</th>
+                                    <th style="min-width: 75px; text-align: center;"><i class="fa-regular fa-image mr-1.5 text-emerald-300"></i>Foto</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-user-riwayat"></tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -361,31 +384,33 @@
                         <button onclick="triggerAdminCetak()" class="bg-[#d4af37] text-[#1b4d3e] font-bold text-xs px-4 py-2 rounded-xl hover:bg-amber-500 transition">Cetak PDF</button>
                     </div>
                 </div>
-                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
-                    <table class="w-full text-left text-[11px] min-w-[1400px]">
-                        <thead class="bg-[#1b4d3e] text-white sticky top-0">
-                            <tr>
-                                <th class="p-3 font-semibold">Nama Lengkap</th>
-                                <th class="p-3 font-semibold">Email</th>
-                                <th class="p-3 font-semibold">No. Telepon</th>
-                                <th class="p-3 font-semibold">Jabatan</th>
-                                <th class="p-3 font-semibold">Divisi</th>
-                                <th class="p-3 font-semibold">Rincian Kegiatan Tugas</th>
-                                <th class="p-3 font-semibold">Hasil Kegiatan</th>
-                                <th class="p-3 font-semibold">Izin Sakit / Keterangan</th>
-                                <th class="p-3 font-semibold">Log Perangkat Absen</th>
-                                <th class="p-3 font-semibold text-center">Foto Kegiatan</th>
-                                <th class="p-3 font-semibold">Titik Koordinat</th>
-                                <th class="p-3 font-semibold">Desa</th>
-                                <th class="p-3 font-semibold">Kecamatan</th>
-                                <th class="p-3 font-semibold">Kabupaten</th>
-                                <th class="p-3 font-semibold text-center">Jam Mulai</th>
-                                <th class="p-3 font-semibold text-center">Jam Selesai</th>
-                                <th class="p-3 font-semibold">Tanggal Log</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-admin-jurnal" class="divide-y text-gray-700 bg-white"></tbody>
-                    </table>
+                <div class="ent-card">
+                    <div class="ent-scroll">
+                        <table class="ent-table min-w-[1700px]">
+                            <thead>
+                                <tr>
+                                    <th class="ent-sticky-col" style="min-width: 170px;"><i class="fa-regular fa-user mr-1.5 text-emerald-300"></i>Nama Lengkap</th>
+                                    <th style="min-width: 180px;"><i class="fa-regular fa-envelope mr-1.5 text-emerald-300"></i>Email</th>
+                                    <th style="min-width: 125px;"><i class="fa-solid fa-phone mr-1.5 text-emerald-300"></i>No. Telepon</th>
+                                    <th style="min-width: 140px;"><i class="fa-solid fa-briefcase mr-1.5 text-emerald-300"></i>Jabatan</th>
+                                    <th style="min-width: 110px;"><i class="fa-solid fa-sitemap mr-1.5 text-emerald-300"></i>Divisi</th>
+                                    <th style="min-width: 240px;"><i class="fa-solid fa-list-check mr-1.5 text-emerald-300"></i>Rincian Kegiatan Tugas</th>
+                                    <th style="min-width: 240px;"><i class="fa-solid fa-square-poll-vertical mr-1.5 text-emerald-300"></i>Hasil Kegiatan</th>
+                                    <th style="min-width: 180px;"><i class="fa-solid fa-file-signature mr-1.5 text-amber-300"></i>Izin / Ket</th>
+                                    <th style="min-width: 150px;"><i class="fa-solid fa-mobile-screen mr-1.5 text-emerald-300"></i>Perangkat</th>
+                                    <th style="min-width: 75px; text-align: center;"><i class="fa-regular fa-image mr-1.5 text-emerald-300"></i>Foto</th>
+                                    <th style="min-width: 140px;"><i class="fa-solid fa-location-crosshairs mr-1.5 text-emerald-300"></i>Koordinat GPS</th>
+                                    <th style="min-width: 130px;">Desa</th>
+                                    <th style="min-width: 130px;">Kecamatan</th>
+                                    <th style="min-width: 130px;">Kabupaten</th>
+                                    <th style="min-width: 90px; text-align: center;"><i class="fa-regular fa-clock mr-1 text-emerald-300"></i>Mulai</th>
+                                    <th style="min-width: 90px; text-align: center;"><i class="fa-regular fa-clock mr-1 text-emerald-300"></i>Selesai</th>
+                                    <th style="min-width: 125px;"><i class="fa-regular fa-calendar mr-1.5 text-emerald-300"></i>Tanggal Log</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-admin-jurnal"></tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -413,40 +438,42 @@
                         </button>
                     </div>
                 </div>
-                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
-                    <table class="w-full text-left text-[11px] min-w-[1600px]">
-                        <thead class="bg-gray-800 text-white sticky top-0">
-                            <tr>
-                                <th class="p-3 font-semibold">Nama Lengkap</th>
-                                <th class="p-3 font-semibold">Email</th>
-                                <th class="p-3 font-semibold">No. Telepon</th>
-                                <th class="p-3 font-semibold">Jabatan</th>
-                                <th class="p-3 font-semibold">Divisi</th>
-                                <th class="p-3 font-semibold">Rincian Kegiatan Tugas</th>
-                                <th class="p-3 font-semibold">Hasil Kegiatan</th>
-                                <th class="p-3 font-semibold">Izin Sakit / Keterangan</th>
-                                <th class="p-3 font-semibold">Log Perangkat Absen</th>
-                                <th class="p-3 font-semibold text-center">Foto Kegiatan</th>
-                                <th class="p-3 font-semibold">Titik Koordinat</th>
-                                <th class="p-3 font-semibold">Desa</th>
-                                <th class="p-3 font-semibold">Kecamatan</th>
-                                <th class="p-3 font-semibold">Kabupaten</th>
-                                <th class="p-3 font-semibold text-center">Jam Mulai</th>
-                                <th class="p-3 font-semibold text-center">Jam Selesai</th>
-                                <th class="p-3 font-semibold">Tanggal Log</th>
-                                <th class="p-3 font-semibold text-center bg-teal-900">Jumlah Jam Kerja</th>
-                                <th class="p-3 font-semibold text-center bg-teal-950">Jumlah Hari Kerja</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-rekap-excel-view" class="divide-y text-gray-700 bg-white"></tbody>
-                        <tfoot class="bg-gray-100 text-gray-900 font-bold border-t-2 border-gray-300">
-                            <tr>
-                                <td colspan="17" class="p-3.5 text-right text-xs uppercase tracking-wider font-extrabold text-gray-700">Total Akumulasi Bulanan:</td>
-                                <td id="total-jam-kerja-foot" class="p-3.5 text-center text-xs font-black text-emerald-800 bg-emerald-50">0.0 Jam</td>
-                                <td id="total-hari-kerja-foot" class="p-3.5 text-center text-xs font-black text-teal-900 bg-teal-50">0 Hari</td>
-                            </tr>
-                        </tfoot>
-                    </table>
+                <div class="ent-card">
+                    <div class="ent-scroll">
+                        <table class="ent-table min-w-[1850px]">
+                            <thead>
+                                <tr>
+                                    <th class="ent-sticky-col" style="min-width: 170px;"><i class="fa-regular fa-user mr-1.5 text-emerald-300"></i>Nama Lengkap</th>
+                                    <th style="min-width: 180px;"><i class="fa-regular fa-envelope mr-1.5 text-emerald-300"></i>Email</th>
+                                    <th style="min-width: 125px;"><i class="fa-solid fa-phone mr-1.5 text-emerald-300"></i>No. Telepon</th>
+                                    <th style="min-width: 140px;"><i class="fa-solid fa-briefcase mr-1.5 text-emerald-300"></i>Jabatan</th>
+                                    <th style="min-width: 110px;"><i class="fa-solid fa-sitemap mr-1.5 text-emerald-300"></i>Divisi</th>
+                                    <th style="min-width: 240px;"><i class="fa-solid fa-list-check mr-1.5 text-emerald-300"></i>Rincian Kegiatan Tugas</th>
+                                    <th style="min-width: 240px;"><i class="fa-solid fa-square-poll-vertical mr-1.5 text-emerald-300"></i>Hasil Kegiatan</th>
+                                    <th style="min-width: 180px;"><i class="fa-solid fa-file-signature mr-1.5 text-amber-300"></i>Izin / Ket</th>
+                                    <th style="min-width: 150px;"><i class="fa-solid fa-mobile-screen mr-1.5 text-emerald-300"></i>Perangkat</th>
+                                    <th style="min-width: 85px; text-align: center;"><i class="fa-regular fa-image mr-1.5 text-emerald-300"></i>Lampiran</th>
+                                    <th style="min-width: 140px;"><i class="fa-solid fa-location-crosshairs mr-1.5 text-emerald-300"></i>Koordinat GPS</th>
+                                    <th style="min-width: 130px;">Desa</th>
+                                    <th style="min-width: 130px;">Kecamatan</th>
+                                    <th style="min-width: 130px;">Kabupaten</th>
+                                    <th style="min-width: 90px; text-align: center;"><i class="fa-regular fa-clock mr-1 text-emerald-300"></i>Mulai</th>
+                                    <th style="min-width: 90px; text-align: center;"><i class="fa-regular fa-clock mr-1 text-emerald-300"></i>Selesai</th>
+                                    <th style="min-width: 125px;"><i class="fa-regular fa-calendar mr-1.5 text-emerald-300"></i>Tanggal Log</th>
+                                    <th style="min-width: 120px; text-align: center; background: #064e3b; border-bottom: 2px solid #34d399;"><i class="fa-solid fa-business-time mr-1 text-emerald-200"></i>Jam Kerja</th>
+                                    <th style="min-width: 120px; text-align: center; background: #064e3b; border-bottom: 2px solid #34d399;"><i class="fa-solid fa-calendar-check mr-1 text-emerald-200"></i>Hari Kerja</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-rekap-excel-view"></tbody>
+                            <tfoot style="position: sticky; bottom: 0; z-index: 20; background: #f1f5f9; border-top: 2px solid #cbd5e1;">
+                                <tr>
+                                    <td colspan="17" style="padding: 12px 16px; text-align: right; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; color: #475569;">Total Akumulasi Terhitung:</td>
+                                    <td id="total-jam-kerja-foot" class="ent-num" style="padding: 12px 14px; text-align: center; font-size: 13px; font-weight: 800; color: #065f46; background: #ecfdf5;">0.0 Jam</td>
+                                    <td id="total-hari-kerja-foot" class="ent-num" style="padding: 12px 14px; text-align: center; font-size: 13px; font-weight: 800; color: #065f46; background: #d1fae5;">0 Hari</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -455,19 +482,21 @@
                     <h2 class="text-xl font-bold text-gray-800"><i class="fa-solid fa-users text-emerald-700 mr-2"></i>Database Akun Terdaftar</h2>
                     <p class="text-xs text-gray-400 mt-0.5">Daftar kontak dan hak akses akun resmi organisasi.</p>
                 </div>
-                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <table class="w-full text-left text-xs">
-                        <thead class="bg-gray-800 text-white">
-                            <tr>
-                                <th class="p-3.5 font-semibold">Nama Lengkap</th>
-                                <th class="p-3.5 font-semibold">No. WhatsApp</th>
-                                <th class="p-3.5 font-semibold">Alamat Email</th>
-                                <th class="p-3.5 font-semibold">Divisi</th>
-                                <th class="p-3.5 font-semibold">Jabatan</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-admin-karyawan" class="divide-y text-gray-700"></tbody>
-                    </table>
+                <div class="ent-card">
+                    <div class="ent-scroll">
+                        <table class="ent-table min-w-[760px]">
+                            <thead>
+                                <tr>
+                                    <th class="ent-sticky-col" style="min-width: 180px;"><i class="fa-regular fa-user mr-1.5 text-emerald-300"></i>Nama Lengkap</th>
+                                    <th style="min-width: 140px;"><i class="fa-brands fa-whatsapp mr-1.5 text-emerald-300"></i>No. WhatsApp</th>
+                                    <th style="min-width: 200px;"><i class="fa-regular fa-envelope mr-1.5 text-emerald-300"></i>Alamat Email</th>
+                                    <th style="min-width: 130px;"><i class="fa-solid fa-sitemap mr-1.5 text-emerald-300"></i>Divisi</th>
+                                    <th style="min-width: 150px;"><i class="fa-solid fa-briefcase mr-1.5 text-emerald-300"></i>Jabatan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-admin-karyawan"></tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
         </main>
@@ -502,6 +531,9 @@
         let cacheLogJurnal = [];
         let listSemuaKaryawan = [];
         let sessionPollTimer = null;
+        let currentWilayahText = '';
+        window.currentWilayahText = '';
+        window.currentGPS = '';
 
         // ==== ESCAPE HTML: cegah tabel rusak / XSS dari data user (Kegiatan, Nama, dll) ====
         function escapeHtml(str) {
@@ -540,9 +572,18 @@
         function parseUserAgentDetail() {
             const ua = navigator.userAgent;
             if (/Windows NT/.test(ua)) return "Windows PC / Laptop";
-            if (/Android/.test(ua)) return "Android Smartphone";
+            if (/Android/.test(ua)) return "Android Smartphone (Web)";
             if (/Macintosh/.test(ua)) return "Apple Mac";
-            return "Perangkat Tidak Dikenal";
+            if (/iPhone|iPad/.test(ua)) return "iPhone / iPad (Web)";
+            return "Web App YEKA";
+        }
+
+        function formatNamaPerangkat(deviceStr) {
+            if (!deviceStr || deviceStr === "-") return "-";
+            return String(deviceStr)
+                .replace(/Aplikasi Expo \(Mobile\)/gi, "Aplikasi Mobile YEKA")
+                .replace(/Aplikasi Expo/gi, "Aplikasi Mobile YEKA")
+                .replace(/Unknown Perangkat/gi, "Perangkat Lain");
         }
 
         // Pengganti onSnapshot Firestore: polling tiap 20 detik cek sesi ganda
@@ -756,7 +797,103 @@
             setAttendanceMode(currentMode);
         }
 
-        // Buka aplikasi kamera native (bukan live-preview browser) lewat <input type="file" capture>
+                function formatIndexWatermark(user, gpsStr, wilayah, dateInput) {
+            const d = (dateInput instanceof Date) ? dateInput : (dateInput ? new Date(dateInput) : new Date());
+            const dStr = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+            const tStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':');
+            const cleanGps = gpsStr ? (gpsStr.startsWith('GPS:') ? gpsStr : ('GPS: ' + gpsStr)) : 'GPS: Belum Terkunci';
+            return {
+                header: 'YAYASAN ELANG KATULISTIWA ADIPAVITRA',
+                staff: `${user?.nama || 'Staf Lapangan'} | ${user?.devisi || user?.jabatan || 'Staff'}`,
+                time: `${dStr} | ${tStr} WIB`,
+                location: cleanGps,
+                wilayah: wilayah || ''
+            };
+        }
+
+        function applyCanvasWatermark(canvas, user, gpsStr, wilayah, dateInput) {
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            const meta = formatIndexWatermark(user, gpsStr, wilayah, dateInput);
+            const width = canvas.width;
+            const height = canvas.height;
+
+            const scale = Math.max(0.6, width / 1000);
+            const fontSizeHeader = Math.max(11, Math.round(15 * scale));
+            const fontSizeBody = Math.max(9, Math.round(12 * scale));
+            const lineSpacing = Math.max(3, Math.round(4 * scale));
+            const paddingX = Math.max(12, Math.round(18 * scale));
+            const paddingY = Math.max(8, Math.round(12 * scale));
+            const barWidth = Math.min(6, Math.max(4, Math.round(5 * scale)));
+            const barGap = Math.max(6, Math.round(10 * scale));
+
+            const totalTextHeight = fontSizeHeader + (3 * fontSizeBody) + (3 * lineSpacing);
+            const bannerHeight = Math.max(Math.round(height * 0.14), totalTextHeight + (paddingY * 2));
+            const bannerY = Math.max(0, height - bannerHeight);
+
+            // 1. Semi-transparent dark banner (rgba(15, 23, 42, 0.76))
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.76)';
+            ctx.fillRect(0, bannerY, width, bannerHeight);
+
+            // 2. Gold vertical accent bar (#d4af37, width 4-6px)
+            const barStartY = bannerY + paddingY;
+            const barHeight = bannerHeight - (paddingY * 2);
+            ctx.fillStyle = '#d4af37';
+            ctx.fillRect(paddingX, barStartY, barWidth, barHeight);
+
+            // 3. Text lines
+            const textStartX = paddingX + barWidth + barGap;
+            const maxTextWidth = Math.max(50, width - textStartX - paddingX);
+
+            ctx.textBaseline = 'top';
+            let curY = barStartY;
+
+            // Line 1: Header (Gold, bold)
+            ctx.font = 'bold ' + fontSizeHeader + 'px sans-serif';
+            ctx.fillStyle = '#d4af37';
+            ctx.fillText(meta.header, textStartX, curY);
+            curY += fontSizeHeader + lineSpacing;
+
+            // Line 2: Staff name & role (White)
+            ctx.font = fontSizeBody + 'px sans-serif';
+            ctx.fillStyle = '#ffffff';
+            let line2 = meta.staff;
+            if (ctx.measureText && ctx.measureText(line2).width > maxTextWidth) {
+                while (line2.length > 3 && ctx.measureText(line2 + '...').width > maxTextWidth) {
+                    line2 = line2.slice(0, -1);
+                }
+                line2 += '...';
+            }
+            ctx.fillText(line2, textStartX, curY);
+            curY += fontSizeBody + lineSpacing;
+
+            // Line 3: Timestamp with WIB (White)
+            ctx.font = fontSizeBody + 'px sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(meta.time, textStartX, curY);
+            curY += fontSizeBody + lineSpacing;
+
+            // Line 4: GPS + Wilayah (White)
+            ctx.font = fontSizeBody + 'px sans-serif';
+            ctx.fillStyle = '#ffffff';
+            let line4 = meta.location;
+            if (meta.wilayah) {
+                line4 += ' | ' + meta.wilayah;
+            }
+            if (ctx.measureText && ctx.measureText(line4).width > maxTextWidth) {
+                while (line4.length > 3 && ctx.measureText(line4 + '...').width > maxTextWidth) {
+                    line4 = line4.slice(0, -1);
+                }
+                line4 += '...';
+            }
+            ctx.fillText(line4, textStartX, curY);
+
+            return canvas;
+        }
+
+// Buka aplikasi kamera native (bukan live-preview browser) lewat <input type="file" capture>
         function handleFotoInputChange(event) {
             const file = event.target.files && event.target.files[0];
             if (!file) return;
@@ -784,6 +921,18 @@
                             return;
                         }
                     } catch (err) {}
+                    // Geo-timestamp photo watermark
+                    try {
+                        const gpsInput = document.getElementById('absen-gps');
+                        const gpsVal = gpsInput ? gpsInput.value.trim() : '';
+                        const gpsStr = (gpsVal && !gpsVal.includes('Mencari') && !gpsVal.includes('Beralih') && !gpsVal.includes('Belum')) 
+                            ? gpsVal 
+                            : (window.currentGPS || 'Belum Terkunci');
+                        applyCanvasWatermark(canvas, currentUser, gpsStr, window.currentWilayahText);
+                    } catch (errWatermark) {
+                        console.error('Gagal menerapkan watermark foto:', errWatermark);
+                    }
+
                     capturedBase64Photo = canvas.toDataURL('image/jpeg', 0.7);
                     const preview = document.getElementById('photo-preview');
                     preview.src = capturedBase64Photo;
@@ -813,7 +962,14 @@
                     (position) => {
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
-                        document.getElementById('absen-gps').value = lat.toFixed(6) + ', ' + lng.toFixed(6);
+                        const gpsCoord = lat.toFixed(6) + ', ' + lng.toFixed(6);
+                        document.getElementById('absen-gps').value = gpsCoord;
+                        window.currentGPS = gpsCoord;
+                        if (typeof google !== 'undefined' && google.script && google.script.run) {
+                            google.script.run.withSuccessHandler(function(w) {
+                                window.currentWilayahText = w;
+                            }).getWilayahClient(lat + ',' + lng);
+                        }
                     }, 
                     (errHigh) => {
                         // TAHAP 2: Jika satelit gagal/lama, otomatis pindah ke Sinyal WiFi/HP (Low Accuracy)
@@ -822,7 +978,14 @@
                             (position) => {
                                 const lat = position.coords.latitude;
                                 const lng = position.coords.longitude;
-                                document.getElementById('absen-gps').value = lat.toFixed(6) + ', ' + lng.toFixed(6);
+                                const gpsCoord = lat.toFixed(6) + ', ' + lng.toFixed(6);
+                        document.getElementById('absen-gps').value = gpsCoord;
+                        window.currentGPS = gpsCoord;
+                        if (typeof google !== 'undefined' && google.script && google.script.run) {
+                            google.script.run.withSuccessHandler(function(w) {
+                                window.currentWilayahText = w;
+                            }).getWilayahClient(lat + ',' + lng);
+                        }
                             },
                             (errLow) => {
                                 let pesan = "GPS tidak dapat diakses.";
@@ -912,34 +1075,43 @@
         async function renderTabelUserRiwayat() {
             const body = document.getElementById('table-user-riwayat');
             if (!body) return;
-            body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-400">Memuat data...</td></tr>';
+            body.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400 font-medium"><i class="fa-solid fa-spinner fa-spin mr-2 text-emerald-600"></i>Memuat riwayat aktivitas...</td></tr>';
             try {
                 const rows = await gsRun('getRiwayatUser', currentUser.email);
                 console.log('getRiwayatUser untuk email:', currentUser.email, '-> jumlah baris:', rows ? rows.length : 0, rows);
                 if (!rows || rows.length === 0) {
-                    body.innerHTML = '<tr><td colspan="7" class="p-4 text-center">Belum ada record absensi untuk email <b>' + escapeHtml(currentUser.email) + '</b>.</td></tr>';
+                    body.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-500 font-medium">Belum ada record absensi untuk email <b>' + escapeHtml(currentUser.email) + '</b>.</td></tr>';
                     return;
                 }
                 body.innerHTML = rows.map(j => {
                     const tampilJamMulai = String(j.JamMulai).includes(' ') ? String(j.JamMulai).split(' ').pop() : (j.JamMulai || "-");
                     const tampilJamAkhir = String(j.JamAkhir).includes(' ') ? String(j.JamAkhir).split(' ').pop() : (j.JamAkhir || "-");
+                    const statusBadge = j.Status === 'HADIR'
+                        ? '<span class="ent-badge bg-emerald-100/80 text-emerald-900 border border-emerald-300"><i class="fa-solid fa-check-circle text-[9px] text-emerald-700"></i>Hadir</span> '
+                        : '<span class="ent-badge bg-amber-100 text-amber-900 border border-amber-300"><i class="fa-solid fa-note-sticky text-[9px] text-amber-700"></i>Izin</span> ';
                     const kegiatanCell = j.Status === 'HADIR'
-                        ? escapeHtml(j.Kegiatan)
-                        : ('<span class="text-amber-600 font-bold">[IZIN]</span> ' + escapeHtml(j.IzinSakit));
+                        ? (statusBadge + escapeHtml(j.Kegiatan))
+                        : (statusBadge + escapeHtml(j.IzinSakit));
                     const wilayahStr = [j.Desa, j.Kecamatan, j.Kabupaten].filter(x => x && x !== '-').join(', ') || '-';
+                    const gpsCell = (j.GPS && j.GPS !== '-')
+                        ? '<a href="https://www.google.com/maps?q=' + encodeURIComponent(j.GPS) + '" target="_blank" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 hover:bg-emerald-50 text-emerald-800 border border-slate-200 ent-num hover:border-emerald-300 transition" title="Buka Google Maps"><i class="fa-solid fa-location-dot text-[10px] text-emerald-600"></i>' + escapeHtml(j.GPS) + '</a>'
+                        : '<span class="text-slate-400 font-mono">-</span>';
+                    const fotoCell = j.FotoURL
+                        ? '<a href="' + encodeURI(j.FotoURL) + '" target="_blank" class="block w-9 h-9 mx-auto rounded-lg overflow-hidden border border-slate-300 shadow-sm hover:scale-105 transition"><img src="' + encodeURI(j.FotoURL) + '" loading="lazy" decoding="async" class="w-full h-full object-cover"></a>'
+                        : '<span class="text-slate-400 font-mono">-</span>';
                     return '<tr>' +
-                        '<td class="p-4">' + escapeHtml(j.Tanggal) + ' ' + escapeHtml(j.Bulan) + ' ' + escapeHtml(j.Tahun) + '</td>' +
-                        '<td class="p-4 font-bold">' + escapeHtml(tampilJamMulai) + ' - ' + escapeHtml(tampilJamAkhir) + '</td>' +
-                        '<td class="p-4">' + kegiatanCell + '</td>' +
-                        '<td class="p-4">' + (escapeHtml(j.HasilKegiatan) || '-') + '</td>' +
-                        '<td class="p-4 font-mono text-[10px]">' + (j.GPS && j.GPS !== '-' ? '<a href="https://www.google.com/maps?q=' + encodeURIComponent(j.GPS) + '" target="_blank" class="text-emerald-700 underline hover:text-emerald-900">' + escapeHtml(j.GPS) + '</a>' : '-') + '</td>' +
-                        '<td class="p-4 text-xs text-gray-600">' + escapeHtml(wilayahStr) + '</td>' +
-                        '<td class="p-4 text-center">' + (j.FotoURL ? '<a href="' + encodeURI(j.FotoURL) + '" target="_blank"><img src="' + encodeURI(j.FotoURL) + '" loading="lazy" decoding="async" class="w-8 h-8 rounded mx-auto object-cover"></a>' : '-') + '</td>' +
+                        '<td class="whitespace-nowrap font-medium text-slate-800"><i class="fa-regular fa-calendar-check mr-1.5 text-slate-400"></i>' + escapeHtml(j.Tanggal) + ' ' + escapeHtml(j.Bulan) + ' ' + escapeHtml(j.Tahun) + '</td>' +
+                        '<td class="ent-num font-semibold text-slate-700 bg-slate-50/50">' + escapeHtml(tampilJamMulai) + ' - ' + escapeHtml(tampilJamAkhir) + '</td>' +
+                        '<td class="font-normal text-slate-700">' + kegiatanCell + '</td>' +
+                        '<td class="text-slate-600">' + (escapeHtml(j.HasilKegiatan) || '-') + '</td>' +
+                        '<td>' + gpsCell + '</td>' +
+                        '<td class="text-slate-600 text-[11px]"><i class="fa-solid fa-map-pin mr-1 text-slate-400"></i>' + escapeHtml(wilayahStr) + '</td>' +
+                        '<td class="text-center">' + fotoCell + '</td>' +
                     '</tr>';
                 }).join('');
             } catch (e) {
                 console.error(e);
-                body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-rose-600">Gagal memuat riwayat: ' + escapeHtml(e.message || e) + '</td></tr>';
+                body.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-rose-600 font-bold">Gagal memuat riwayat: ' + escapeHtml(e.message || e) + '</td></tr>';
             }
         }
 
@@ -1043,31 +1215,44 @@
             const body = document.getElementById('table-admin-jurnal');
             if (!body) return;
             if (cacheLogJurnal.length === 0) {
-                body.innerHTML = '<tr><td colspan="17" class="p-4 text-center text-gray-400">Database jurnal kosong.</td></tr>';
+                body.innerHTML = '<tr><td colspan="17" class="p-8 text-center text-slate-400 font-medium">Database jurnal kosong.</td></tr>';
                 return;
             }
             const visibleRows = cacheLogJurnal.slice(0, adminRenderLimit);
-            let rowsHtml = visibleRows.map(j => '<tr class="border-b hover:bg-gray-50/60 transition">' +
-                    '<td class="p-3 font-bold text-gray-900">' + escapeHtml(j.Nama) + '</td>' +
-                    '<td class="p-3 text-gray-500">' + escapeHtml(j.Email) + '</td>' +
-                    '<td class="p-3 text-gray-500">' + (escapeHtml(j.Telepon) || "-") + '</td>' +
-                    '<td class="p-3 font-medium text-gray-800">' + escapeHtml(j.Jabatan) + '</td>' +
-                    '<td class="p-3"><span class="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded font-bold">' + escapeHtml(j.Divisi) + '</span></td>' +
-                    '<td class="p-3 max-w-xs break-words">' + (escapeHtml(j.Kegiatan) || "-") + '</td>' +
-                    '<td class="p-3 max-w-xs break-words">' + (escapeHtml(j.HasilKegiatan) || "-") + '</td>' +
-                    '<td class="p-3 max-w-xs break-words text-amber-800 font-medium">' + (escapeHtml(j.IzinSakit) || "-") + '</td>' +
-                    '<td class="p-3 font-mono text-xs text-blue-900 font-semibold bg-blue-50/40">' + (escapeHtml(j.Device) || "Unknown Perangkat") + '</td>' +
-                    '<td class="p-3 text-center">' + (j.FotoURL ? '<a href="' + encodeURI(j.FotoURL) + '" target="_blank"><img src="' + encodeURI(j.FotoURL) + '" loading="lazy" decoding="async" class="w-12 h-12 object-cover rounded-lg border border-gray-300 mx-auto shadow-sm"></a>' : '-') + '</td>' +
-                    '<td class="p-3 font-mono text-gray-600 text-[10px]">' + (j.GPS && j.GPS !== '-' ? '<a href="https://www.google.com/maps?q=' + encodeURIComponent(j.GPS) + '" target="_blank" class="text-emerald-700 underline hover:text-emerald-900">' + escapeHtml(j.GPS) + '</a>' : '-') + '</td>' +
-                    '<td class="p-3 text-gray-700">' + (escapeHtml(j.Desa) || "-") + '</td>' +
-                    '<td class="p-3 text-gray-700">' + (escapeHtml(j.Kecamatan) || "-") + '</td>' +
-                    '<td class="p-3 text-gray-700">' + (escapeHtml(j.Kabupaten) || "-") + '</td>' +
-                    '<td class="p-3 text-center font-bold text-gray-700">' + escapeHtml(String(j.JamMulai).includes(' ') ? String(j.JamMulai).split(' ').pop() : (j.JamMulai || "-")) + '</td>' +
-                    '<td class="p-3 text-center font-bold text-gray-700">' + escapeHtml(String(j.JamAkhir).includes(' ') ? String(j.JamAkhir).split(' ').pop() : (j.JamAkhir || "-")) + '</td>' +
-                    '<td class="p-3 text-gray-500 whitespace-nowrap">' + escapeHtml(j.Tanggal) + ' ' + escapeHtml(j.Bulan) + ' ' + escapeHtml(j.Tahun) + '</td>' +
-                '</tr>').join('');
+            let rowsHtml = visibleRows.map(j => {
+                const tampilJamMulai = String(j.JamMulai).includes(' ') ? String(j.JamMulai).split(' ').pop() : (j.JamMulai || "-");
+                const tampilJamAkhir = String(j.JamAkhir).includes(' ') ? String(j.JamAkhir).split(' ').pop() : (j.JamAkhir || "-");
+                const gpsCell = (j.GPS && j.GPS !== '-')
+                    ? '<a href="https://www.google.com/maps?q=' + encodeURIComponent(j.GPS) + '" target="_blank" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 hover:bg-emerald-50 text-emerald-800 border border-slate-200 ent-num hover:border-emerald-300 transition" title="Buka Lokasi Google Maps"><i class="fa-solid fa-location-dot text-[10px] text-emerald-600"></i>' + escapeHtml(j.GPS) + '</a>'
+                    : '<span class="text-slate-400 font-mono">-</span>';
+                const fotoCell = j.FotoURL
+                    ? '<a href="' + encodeURI(j.FotoURL) + '" target="_blank" class="block w-9 h-9 mx-auto rounded-lg overflow-hidden border border-slate-300 shadow-sm hover:scale-105 transition"><img src="' + encodeURI(j.FotoURL) + '" loading="lazy" decoding="async" class="w-full h-full object-cover"></a>'
+                    : '<span class="text-slate-400 font-mono">-</span>';
+                const izinCell = j.IzinSakit && j.IzinSakit !== '-'
+                    ? '<span class="ent-badge bg-amber-50 text-amber-900 border border-amber-200"><i class="fa-solid fa-note-sticky text-[9px] text-amber-700"></i>' + escapeHtml(j.IzinSakit) + '</span>'
+                    : '<span class="text-slate-400 font-mono">-</span>';
+                return '<tr>' +
+                    '<td class="ent-sticky-col font-bold text-slate-900 whitespace-nowrap"><i class="fa-solid fa-circle-user mr-1.5 text-emerald-600"></i>' + escapeHtml(j.Nama) + '</td>' +
+                    '<td class="text-slate-600 whitespace-nowrap">' + escapeHtml(j.Email) + '</td>' +
+                    '<td class="ent-num text-slate-700">' + (escapeHtml(j.Telepon) || "-") + '</td>' +
+                    '<td class="font-medium text-slate-800 whitespace-nowrap">' + escapeHtml(j.Jabatan) + '</td>' +
+                    '<td><span class="ent-badge bg-emerald-50 text-emerald-900 border border-emerald-200">' + escapeHtml(j.Divisi) + '</span></td>' +
+                    '<td class="text-slate-700">' + (escapeHtml(j.Kegiatan) || "-") + '</td>' +
+                    '<td class="text-slate-600">' + (escapeHtml(j.HasilKegiatan) || "-") + '</td>' +
+                    '<td>' + izinCell + '</td>' +
+                    '<td><span class="ent-badge bg-sky-50 text-sky-900 border border-sky-200 ent-num"><i class="fa-solid fa-mobile mr-1 text-[10px] text-sky-600"></i>' + escapeHtml(formatNamaPerangkat(j.Device)) + '</span></td>' +
+                    '<td class="text-center">' + fotoCell + '</td>' +
+                    '<td>' + gpsCell + '</td>' +
+                    '<td class="text-slate-700 whitespace-nowrap">' + (escapeHtml(j.Desa) || "-") + '</td>' +
+                    '<td class="text-slate-700 whitespace-nowrap">' + (escapeHtml(j.Kecamatan) || "-") + '</td>' +
+                    '<td class="text-slate-700 whitespace-nowrap">' + (escapeHtml(j.Kabupaten) || "-") + '</td>' +
+                    '<td class="text-center ent-num font-semibold text-slate-700 bg-slate-50/50">' + escapeHtml(tampilJamMulai) + '</td>' +
+                    '<td class="text-center ent-num font-semibold text-slate-700 bg-slate-50/50">' + escapeHtml(tampilJamAkhir) + '</td>' +
+                    '<td class="text-slate-600 whitespace-nowrap"><i class="fa-regular fa-calendar mr-1 text-slate-400"></i>' + escapeHtml(j.Tanggal) + ' ' + escapeHtml(j.Bulan) + ' ' + escapeHtml(j.Tahun) + '</td>' +
+                '</tr>';
+            }).join('');
             if (cacheLogJurnal.length > adminRenderLimit) {
-                rowsHtml += '<tr><td colspan="17" class="p-3 text-center bg-gray-50"><button onclick="adminRenderLimit += 100; renderTabelAdminMaster()" class="px-4 py-2 bg-emerald-700 text-white rounded-xl font-bold text-xs hover:bg-emerald-800 transition">Tampilkan Lebih Banyak (' + adminRenderLimit + ' dari ' + cacheLogJurnal.length + ' data)</button></td></tr>';
+                rowsHtml += '<tr><td colspan="17" class="p-4 text-center bg-slate-50 border-t border-slate-200"><button onclick="adminRenderLimit += 100; renderTabelAdminMaster()" class="px-5 py-2 bg-emerald-700 text-white rounded-xl font-bold text-xs hover:bg-emerald-800 shadow transition"><i class="fa-solid fa-angles-down mr-1.5"></i>Tampilkan 100 Data Berikutnya (' + adminRenderLimit + ' dari ' + cacheLogJurnal.length + ' data)</button></td></tr>';
             }
             body.innerHTML = rowsHtml;
         }
@@ -1173,26 +1358,35 @@
                     }
                 }
 
-                return '<tr class="border-b hover:bg-gray-50 transition">' +
-                    '<td class="p-3 font-bold text-gray-900">' + escapeHtml(j.Nama) + '</td>' +
-                    '<td class="p-3 text-gray-500">' + escapeHtml(j.Email) + '</td>' +
-                    '<td class="p-3 text-gray-500">' + (escapeHtml(j.Telepon) || "-") + '</td>' +
-                    '<td class="p-3 font-medium text-gray-800">' + escapeHtml(j.Jabatan) + '</td>' +
-                    '<td class="p-3"><span class="bg-gray-100 text-gray-800 px-2 py-0.5 rounded font-bold">' + escapeHtml(j.Divisi) + '</span></td>' +
-                    '<td class="p-3 max-w-xs break-words text-gray-600">' + (escapeHtml(j.Kegiatan) || "-") + '</td>' +
-                    '<td class="p-3 max-w-xs break-words text-gray-600">' + (escapeHtml(j.HasilKegiatan) || "-") + '</td>' +
-                    '<td class="p-3 max-w-xs break-words text-amber-700 font-medium">' + (escapeHtml(j.IzinSakit) || "-") + '</td>' +
-                    '<td class="p-3 font-mono text-gray-500">' + (escapeHtml(j.Device) || "Unknown") + '</td>' +
-                    '<td class="p-3 text-center">' + (j.FotoURL ? '<span class="text-emerald-600 font-semibold text-[10px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Ada Lampiran</span>' : '<span class="text-gray-400">-</span>') + '</td>' +
-                    '<td class="p-3 font-mono text-gray-500">' + (j.GPS && j.GPS !== '-' ? '<a href="https://www.google.com/maps?q=' + encodeURIComponent(j.GPS) + '" target="_blank" class="text-emerald-700 underline hover:text-emerald-900">' + escapeHtml(j.GPS) + '</a>' : '-') + '</td>' +
-                    '<td class="p-3 text-gray-600">' + (escapeHtml(j.Desa) || "-") + '</td>' +
-                    '<td class="p-3 text-gray-600">' + (escapeHtml(j.Kecamatan) || "-") + '</td>' +
-                    '<td class="p-3 text-gray-600">' + (escapeHtml(j.Kabupaten) || "-") + '</td>' +
-                    '<td class="p-3 text-center font-semibold text-gray-700">' + escapeHtml(tampilJamMulai) + '</td>' +
-                    '<td class="p-3 text-center font-semibold text-gray-700">' + escapeHtml(tampilJamAkhir) + '</td>' +
-                    '<td class="p-3 text-gray-500 whitespace-nowrap">' + escapeHtml(j.Tanggal) + ' ' + escapeHtml(j.Bulan) + ' ' + escapeHtml(j.Tahun) + '</td>' +
-                    '<td class="p-3 text-center font-bold text-teal-700 bg-teal-50/50">' + jamKerja + ' Jam</td>' +
-                    '<td class="p-3 text-center font-bold text-teal-900 bg-teal-100/30">' + hadirKaryawanIni + '</td>' +
+                const gpsCell = (j.GPS && j.GPS !== '-')
+                    ? '<a href="https://www.google.com/maps?q=' + encodeURIComponent(j.GPS) + '" target="_blank" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 hover:bg-emerald-50 text-emerald-800 border border-slate-200 ent-num hover:border-emerald-300 transition" title="Buka Lokasi Google Maps"><i class="fa-solid fa-location-dot text-[10px] text-emerald-600"></i>' + escapeHtml(j.GPS) + '</a>'
+                    : '<span class="text-slate-400 font-mono">-</span>';
+                const lampiranBadge = j.FotoURL
+                    ? '<a href="' + encodeURI(j.FotoURL) + '" target="_blank" class="ent-badge bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100"><i class="fa-solid fa-paperclip text-[10px]"></i>Lihat</a>'
+                    : '<span class="text-slate-400 font-mono">-</span>';
+                const izinCell = j.IzinSakit && j.IzinSakit !== '-'
+                    ? '<span class="ent-badge bg-amber-50 text-amber-900 border border-amber-200">' + escapeHtml(j.IzinSakit) + '</span>'
+                    : '<span class="text-slate-400 font-mono">-</span>';
+                return '<tr>' +
+                    '<td class="ent-sticky-col font-bold text-slate-900 whitespace-nowrap"><i class="fa-solid fa-circle-user mr-1.5 text-emerald-600"></i>' + escapeHtml(j.Nama) + '</td>' +
+                    '<td class="text-slate-600 whitespace-nowrap">' + escapeHtml(j.Email) + '</td>' +
+                    '<td class="ent-num text-slate-700">' + (escapeHtml(j.Telepon) || "-") + '</td>' +
+                    '<td class="font-medium text-slate-800 whitespace-nowrap">' + escapeHtml(j.Jabatan) + '</td>' +
+                    '<td><span class="ent-badge bg-slate-100 text-slate-800 border border-slate-200">' + escapeHtml(j.Divisi) + '</span></td>' +
+                    '<td class="text-slate-700">' + (escapeHtml(j.Kegiatan) || "-") + '</td>' +
+                    '<td class="text-slate-600">' + (escapeHtml(j.HasilKegiatan) || "-") + '</td>' +
+                    '<td>' + izinCell + '</td>' +
+                    '<td><span class="ent-badge bg-sky-50 text-sky-900 border border-sky-200 ent-num"><i class="fa-solid fa-mobile mr-1 text-[10px] text-sky-600"></i>' + escapeHtml(formatNamaPerangkat(j.Device)) + '</span></td>' +
+                    '<td class="text-center">' + lampiranBadge + '</td>' +
+                    '<td>' + gpsCell + '</td>' +
+                    '<td class="text-slate-700 whitespace-nowrap">' + (escapeHtml(j.Desa) || "-") + '</td>' +
+                    '<td class="text-slate-700 whitespace-nowrap">' + (escapeHtml(j.Kecamatan) || "-") + '</td>' +
+                    '<td class="text-slate-700 whitespace-nowrap">' + (escapeHtml(j.Kabupaten) || "-") + '</td>' +
+                    '<td class="text-center ent-num font-semibold text-slate-700 bg-slate-50/50">' + escapeHtml(tampilJamMulai) + '</td>' +
+                    '<td class="text-center ent-num font-semibold text-slate-700 bg-slate-50/50">' + escapeHtml(tampilJamAkhir) + '</td>' +
+                    '<td class="text-slate-600 whitespace-nowrap"><i class="fa-regular fa-calendar mr-1 text-slate-400"></i>' + escapeHtml(j.Tanggal) + ' ' + escapeHtml(j.Bulan) + ' ' + escapeHtml(j.Tahun) + '</td>' +
+                    '<td class="text-center ent-num font-bold text-emerald-800 bg-emerald-50/80">' + jamKerja + ' Jam</td>' +
+                    '<td class="text-center ent-num font-bold text-teal-900 bg-teal-100/60">' + hadirKaryawanIni + '</td>' +
                 '</tr>';
             }).join('');
 
@@ -1212,15 +1406,15 @@
             if (!body) return;
             body.innerHTML = '';
             if (listSemuaKaryawan.length === 0) {
-                body.innerHTML = '<tr><td colspan="5" class="p-3.5 text-center text-gray-400">Tidak ada personel terdaftar.</td></tr>';
+                body.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-400 font-medium">Tidak ada personel terdaftar.</td></tr>';
                 return;
             }
-            body.innerHTML = listSemuaKaryawan.map(p => '<tr class="border-b hover:bg-gray-50 transition">' +
-                    '<td class="p-3.5 font-semibold text-gray-800">' + escapeHtml(p.Nama) + '</td>' +
-                    '<td class="p-3.5 text-emerald-800 font-mono font-bold">' + (escapeHtml(p.Telepon) || '-') + '</td>' +
-                    '<td class="p-3.5 text-gray-600">' + escapeHtml(p.Email) + '</td>' +
-                    '<td class="p-3"><span class="bg-emerald-50 text-emerald-900 border border-emerald-100 px-2 py-0.5 rounded-md font-medium">' + escapeHtml(p.Divisi) + '</span></td>' +
-                    '<td class="p-3 text-gray-600">' + escapeHtml(p.Jabatan) + '</td>' +
+            body.innerHTML = listSemuaKaryawan.map(p => '<tr>' +
+                    '<td class="ent-sticky-col font-bold text-slate-900 whitespace-nowrap"><i class="fa-solid fa-circle-user mr-1.5 text-emerald-600"></i>' + escapeHtml(p.Nama) + '</td>' +
+                    '<td class="ent-num font-semibold text-emerald-800 whitespace-nowrap"><i class="fa-brands fa-whatsapp mr-1 text-emerald-600"></i>' + (escapeHtml(p.Telepon) || '-') + '</td>' +
+                    '<td class="text-slate-600 whitespace-nowrap">' + escapeHtml(p.Email) + '</td>' +
+                    '<td><span class="ent-badge bg-emerald-50 text-emerald-900 border border-emerald-200">' + escapeHtml(p.Divisi) + '</span></td>' +
+                    '<td class="font-medium text-slate-800 whitespace-nowrap">' + escapeHtml(p.Jabatan) + '</td>' +
                 '</tr>').join('');
         }
 
@@ -1270,7 +1464,7 @@
                 return [
                     j.Nama, j.Email, j.Telepon || "-", j.Jabatan, j.Divisi,
                     j.Kegiatan || "-", j.HasilKegiatan || "-", j.IzinSakit || "-",
-                    j.Device || "Unknown Perangkat", j.FotoURL ? "Ada Lampiran" : "-", j.GPS,
+                    formatNamaPerangkat(j.Device), j.FotoURL ? "Ada Lampiran" : "-", j.GPS,
                     j.Desa || "-", j.Kecamatan || "-", j.Kabupaten || "-",
                     tampilJamMulai, tampilJamAkhir,
                     j.Tanggal + ' ' + j.Bulan + ' ' + j.Tahun, jamKerja, hariKerja
