@@ -74,9 +74,6 @@
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "owner": "admin-yeka",
-    "experiments": {
-      "baseUrl": "/logbook-yeka-web"
-    }
+    "owner": "admin-yeka"
   }
 }

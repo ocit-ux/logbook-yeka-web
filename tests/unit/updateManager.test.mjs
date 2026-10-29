@@ -19,6 +19,98 @@ test('App.json configuration contract: checkAutomatically NEVER to prevent SQLit
   );
 });
 
+test('app.json contract: experiments.baseUrl is removed to prevent native Android asset routing failure', () => {
+  const appJsonPath = path.join(rootDir, 'apps/mobile/app.json');
+  const appConfig = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'));
+
+  assert.strictEqual(
+    appConfig.expo?.experiments?.baseUrl,
+    undefined,
+    'app.json must NOT define experiments.baseUrl statically'
+  );
+  assert.strictEqual(
+    appConfig.expo?.experiments,
+    undefined,
+    'app.json must NOT define experiments statically'
+  );
+  assert.strictEqual(
+    appConfig.expo?.runtimeVersion?.policy,
+    'appVersion',
+    'app.json runtimeVersion must use policy appVersion'
+  );
+  assert.strictEqual(
+    appConfig.expo?.version,
+    '1.0.0',
+    'app.json version must remain 1.0.0'
+  );
+});
+
+test('update-semua.js contract: isolates baseUrl by stripping experiments for Android EAS and injecting for web export', async () => {
+  const updateScript = await import('../../apps/mobile/update-semua.js');
+  const { prepareAndroidConfig, prepareWebConfig } = updateScript.default || updateScript;
+
+  assert.strictEqual(typeof prepareAndroidConfig, 'function', 'prepareAndroidConfig must be exported');
+  assert.strictEqual(typeof prepareWebConfig, 'function', 'prepareWebConfig must be exported');
+
+  // Verify Android EAS preparation strips experiments.baseUrl
+  const rawSample = {
+    expo: {
+      name: 'SyncInYEKA',
+      experiments: {
+        baseUrl: '/logbook-yeka-web'
+      }
+    }
+  };
+  const androidConfig = prepareAndroidConfig(rawSample);
+  assert.strictEqual(
+    androidConfig.expo?.experiments?.baseUrl,
+    undefined,
+    'prepareAndroidConfig must remove experiments.baseUrl for clean Android EAS bundling'
+  );
+  assert.strictEqual(
+    androidConfig.expo?.experiments,
+    undefined,
+    'prepareAndroidConfig must remove empty experiments object'
+  );
+  assert.strictEqual(
+    androidConfig.expo?.owner,
+    'admin-yeka',
+    'prepareAndroidConfig must set owner to admin-yeka'
+  );
+
+  // Verify Web export preparation injects baseUrl
+  const cleanSample = {
+    expo: {
+      name: 'SyncInYEKA'
+    }
+  };
+  const webConfig = prepareWebConfig(cleanSample);
+  assert.strictEqual(
+    webConfig.expo?.experiments?.baseUrl,
+    '/logbook-yeka-web',
+    'prepareWebConfig must inject experiments.baseUrl for GitHub Pages web export'
+  );
+});
+
+test('update-semua.js contract: wraps web export with baseUrl injection and finally restoration', () => {
+  const scriptPath = path.join(rootDir, 'apps/mobile/update-semua.js');
+  const content = fs.readFileSync(scriptPath, 'utf8');
+
+  // Verify dynamic baseUrl injection exists in script
+  assert.match(
+    content,
+    /prepareWebConfig|baseUrl:\s*['"]\/logbook-yeka-web['"]/,
+    'update-semua.js must dynamically inject baseUrl before web export'
+  );
+
+  // Verify restoration in finally block
+  assert.match(
+    content,
+    /finally\s*\{[\s\S]*?writeFileSync\s*\(\s*appJsonPath/,
+    'update-semua.js must restore app.json in finally block during web export'
+  );
+});
+
 test('update-semua.js contract: uses TOKEN_ANDROID for Android cloud updates', () => {
   const scriptPath = path.join(rootDir, 'apps/mobile/update-semua.js');
   const content = fs.readFileSync(scriptPath, 'utf8');

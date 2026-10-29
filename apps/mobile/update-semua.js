@@ -84,6 +84,36 @@ function resolveExpoExportCommand(baseDir = __dirname, platform = process.platfo
   return platform === 'win32' ? 'npx.cmd --yes expo export -p web' : 'npx --yes expo export -p web';
 }
 
+function prepareAndroidConfig(rawConfig) {
+  const config = JSON.parse(JSON.stringify(rawConfig || {}));
+  if (!config.expo) config.expo = {};
+  config.expo.owner = "admin-yeka";
+  if (!config.expo.extra) config.expo.extra = {};
+  if (!config.expo.extra.eas) config.expo.extra.eas = {};
+  config.expo.extra.eas.projectId = "0435be94-6cd0-4d8b-acac-865ae059b930";
+
+  if (!config.expo.updates) config.expo.updates = {};
+  config.expo.updates.url = "https://u.expo.dev/0435be94-6cd0-4d8b-acac-865ae059b930";
+
+  // Isolasi baseUrl: Hapus experiments.baseUrl dari konfigurasi EAS update Android
+  if (config.expo.experiments) {
+    delete config.expo.experiments.baseUrl;
+    if (Object.keys(config.expo.experiments).length === 0) {
+      delete config.expo.experiments;
+    }
+  }
+
+  return config;
+}
+
+function prepareWebConfig(rawConfig) {
+  const config = JSON.parse(JSON.stringify(rawConfig || {}));
+  if (!config.expo) config.expo = {};
+  if (!config.expo.experiments) config.expo.experiments = {};
+  config.expo.experiments.baseUrl = "/logbook-yeka-web";
+  return config;
+}
+
 function runUpdate() {
   // 1. Ambil Token dari variabel environment atau file .env
   if (fs.existsSync(path.join(__dirname, '.env'))) {
@@ -125,15 +155,8 @@ function runUpdate() {
     const appConfig = JSON.parse(originalAppJson);
 
     console.log("==> 1. Konfigurasi App.json (admin-yeka)...");
-    appConfig.expo.owner = "admin-yeka";
-    if (!appConfig.expo.extra) appConfig.expo.extra = {};
-    if (!appConfig.expo.extra.eas) appConfig.expo.extra.eas = {};
-    appConfig.expo.extra.eas.projectId = "0435be94-6cd0-4d8b-acac-865ae059b930";
-    
-    if (!appConfig.expo.updates) appConfig.expo.updates = {};
-    appConfig.expo.updates.url = "https://u.expo.dev/0435be94-6cd0-4d8b-acac-865ae059b930";
-    
-    fs.writeFileSync(appJsonPath, JSON.stringify(appConfig, null, 2));
+    const androidConfig = prepareAndroidConfig(appConfig);
+    fs.writeFileSync(appJsonPath, JSON.stringify(androidConfig, null, 2));
 
     console.log("==> Mengunggah ke Cloud Expo (Preview)...");
     execSync(`${easCmd} update --branch preview --message "${msg}" --environment preview`, {
@@ -162,8 +185,13 @@ function runUpdate() {
   // ==========================================
   // TAHAP 2: UPDATE WEB APP IOS (GITHUB PAGES)
   // ==========================================
+  let webAppJsonOriginal = '';
   try {
     console.log("\n==> 2. Membangun bundel Web App iOS (dist)...");
+    webAppJsonOriginal = fs.readFileSync(appJsonPath, 'utf8');
+    const webConfig = prepareWebConfig(JSON.parse(webAppJsonOriginal));
+    fs.writeFileSync(appJsonPath, JSON.stringify(webConfig, null, 2));
+
     execSync(expoExportCmd, {
       cwd: __dirname,
       stdio: 'inherit'
@@ -174,6 +202,11 @@ function runUpdate() {
     console.log("[SUKSES] Web App iOS berhasil dipublikasikan ke GitHub Pages!");
   } catch (error) {
     console.error("[ERROR] Terjadi kesalahan saat deploy Web App iOS ke GitHub Pages:", error.message);
+  } finally {
+    if (webAppJsonOriginal) {
+      fs.writeFileSync(appJsonPath, webAppJsonOriginal);
+      console.log("==> app.json berhasil dikembalikan ke posisi semula setelah web export.");
+    }
   }
 
   console.log("\n[SELESAI] Seluruh rangkaian pembaruan Android & iOS Web App telah diproses.\n");
@@ -187,5 +220,7 @@ module.exports = {
   resolveEasCommand,
   resolveGhPagesCommand,
   resolveExpoExportCommand,
+  prepareAndroidConfig,
+  prepareWebConfig,
   runUpdate
 };
