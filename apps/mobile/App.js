@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Alert, Platform, AppState } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Alert, Platform, AppState, ActivityIndicator } from 'react-native';
 import * as Updates from 'expo-updates';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -86,8 +86,8 @@ function MainApp() {
   }
 
   const lastUpdateCheckRef = useRef(0);
-
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateReady, setUpdateReady] = useState(false);
+  const [isApplyingUpdate, setIsApplyingUpdate] = useState(false);
 
   useEffect(() => {
     const checkAutoUpdate = async () => {
@@ -98,12 +98,12 @@ function MainApp() {
       try {
         const update = await Updates.checkForUpdateAsync();
         if (update.isAvailable) {
-          setIsUpdating(true);
+          // Unduh di latar belakang secara hening tanpa mengganggu sesi pengguna
           await Updates.fetchUpdateAsync();
-          await Updates.reloadAsync();
+          setUpdateReady(true);
         }
       } catch (e) {
-        setIsUpdating(false);
+        // Abaikan gangguan jaringan sesaat
       }
     };
 
@@ -126,6 +126,19 @@ function MainApp() {
       notifSub?.remove?.();
     };
   }, []);
+
+  const handleApplyUpdate = async () => {
+    if (isApplyingUpdate) return;
+    setIsApplyingUpdate(true);
+    // Beri jeda 300ms agar event loop native dan UI selesai dengan rapi sebelum reload
+    setTimeout(async () => {
+      try {
+        await Updates.reloadAsync();
+      } catch (e) {
+        setIsApplyingUpdate(false);
+      }
+    }, 300);
+  };
 
   const syncPushTokenToServer = async (targetUser) => {
     if (!targetUser || targetUser.role === 'admin') return;
@@ -285,11 +298,41 @@ function MainApp() {
           </View>
         </View>
       )}
-          {isUpdating && (
-        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, backgroundColor: "rgba(15,45,36,0.96)", justifyContent: "center", alignItems: "center", padding: 24 }}>
-          <Ionicons name="cloud-download-outline" size={56} color="#d4af37" style={{ marginBottom: 16 }} />
-          <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold", textAlign: "center", marginBottom: 8 }}>Memperbarui Sistem...</Text>
-          <Text style={{ color: "#cbd5e1", fontSize: 13, textAlign: "center", lineHeight: 20 }}>Pembaruan kilat sedang dipasang. Aplikasi akan restart otomatis dalam beberapa detik...</Text>
+          {updateReady && (
+        <View style={styles.updateCard}>
+          <View style={styles.updateCardLeft}>
+            <View style={styles.updateIconWrapper}>
+              <Ionicons name="sparkles" size={18} color="#d4af37" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.updateCardTitle}>Pembaruan Sistem Siap</Text>
+              <Text style={styles.updateCardDesc}>
+                Versi baru telah diunduh. Terapkan sekarang atau otomatis saat membuka aplikasi kembali.
+              </Text>
+            </View>
+          </View>
+          <View style={styles.updateCardActions}>
+            <TouchableOpacity 
+              style={styles.updateApplyBtn} 
+              onPress={handleApplyUpdate}
+              disabled={isApplyingUpdate}
+              activeOpacity={0.8}
+            >
+              {isApplyingUpdate ? (
+                <ActivityIndicator size="small" color="#12382c" />
+              ) : (
+                <Text style={styles.updateApplyBtnText}>Terapkan</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.updateDismissBtn} 
+              onPress={() => setUpdateReady(false)}
+              activeOpacity={0.7}
+              accessibilityLabel="Tutup"
+            >
+              <Ionicons name="close" size={18} color="#cbd5e1" />
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </SafeAreaView>
@@ -358,5 +401,77 @@ const getStyles = (theme, insets) => StyleSheet.create({
     fontSize: 12,
     color: theme.textSecondary,
     marginTop: 4,
+  },
+  updateCard: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? Math.max(12, insets?.top || 0) : 12,
+    left: 14,
+    right: 14,
+    zIndex: 9999,
+    backgroundColor: 'rgba(18, 56, 44, 0.98)',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#d4af37',
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  updateCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+  },
+  updateIconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(212, 175, 55, 0.16)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  updateCardTitle: {
+    color: '#d4af37',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  updateCardDesc: {
+    color: '#ecfdf5',
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  updateCardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  updateApplyBtn: {
+    backgroundColor: '#d4af37',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 6,
+  },
+  updateApplyBtnText: {
+    color: '#12382c',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  updateDismissBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   }
 });
