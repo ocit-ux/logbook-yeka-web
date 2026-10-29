@@ -8,7 +8,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "deploy:android": "eas update --branch preview --message \"Auto update Android\" --environment preview",
-    "deploy:web": "node ../../node_modules/expo/bin/cli export -p web && npx gh-pages -d dist -r https://github.com/ocit-ux/logbook-yeka-web.git -b main"
+    "deploy:web": "npx expo export -p web && node deploy-web-runner.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.11",

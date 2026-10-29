@@ -1,6 +1,7 @@
 const fs = require('fs');
 const { execSync } = require('child_process');
 const path = require('path');
+const { deployWebDirect } = require('./deploy-web-runner.js');
 
 function resolveEasCommand(baseDir = __dirname, platform = process.platform, deps = {}) {
   const fsImpl = deps.fs || (deps.existsSync ? deps : fs);
@@ -104,11 +105,9 @@ function runUpdate() {
   }
 
   const easCmd = resolveEasCommand(__dirname, process.platform);
-  const ghPagesCmd = resolveGhPagesCommand(__dirname, process.platform);
   const expoExportCmd = resolveExpoExportCommand(__dirname, process.platform);
 
   console.log(`==> Executable EAS: ${easCmd}`);
-  console.log(`==> Executable GitHub Pages: ${ghPagesCmd}`);
   console.log(`==> Executable Expo Web Export: ${expoExportCmd}`);
 
   const appJsonPath = path.join(__dirname, 'app.json');
@@ -171,11 +170,7 @@ function runUpdate() {
     });
 
     console.log("==> Mengunggah Web App iOS ke GitHub Pages (logbook-yeka-web)...");
-    execSync(`${ghPagesCmd} -d dist -r https://github.com/ocit-ux/logbook-yeka-web.git -b main -m "${msg}"`, {
-      cwd: __dirname,
-      stdio: 'inherit'
-    });
-
+    deployWebDirect(__dirname, msg);
     console.log("[SUKSES] Web App iOS berhasil dipublikasikan ke GitHub Pages!");
   } catch (error) {
     console.error("[ERROR] Terjadi kesalahan saat deploy Web App iOS ke GitHub Pages:", error.message);
