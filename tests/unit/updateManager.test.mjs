@@ -171,6 +171,105 @@ test('App.js source code integration contract: safe enterprise auto-update witho
   assert.strictEqual(content.includes('\u2014'), false, 'App.js must contain zero em dashes');
 });
 
+test('Silent background download contract: fetches update without automatic reload on background check', () => {
+  const appJsPath = path.join(rootDir, 'apps/mobile/App.js');
+  const content = fs.readFileSync(appJsPath, 'utf8');
+
+  const checkAutoUpdateMatch = content.match(/const checkAutoUpdate = async \(\) => {([\s\S]*?)};/);
+  assert.ok(checkAutoUpdateMatch, 'checkAutoUpdate function must be defined in App.js');
+  const checkBody = checkAutoUpdateMatch[1];
+
+  assert.ok(
+    checkBody.includes('Updates.fetchUpdateAsync()'),
+    'checkAutoUpdate must call Updates.fetchUpdateAsync to download silently in background'
+  );
+  assert.ok(
+    checkBody.includes('setUpdateReady(true)'),
+    'checkAutoUpdate must set updateReady state to true upon download completion'
+  );
+  assert.strictEqual(
+    checkBody.includes('Updates.reloadAsync'),
+    false,
+    'checkAutoUpdate must NEVER call Updates.reloadAsync automatically during background check'
+  );
+});
+
+test('Dual-option activation banner contract: Title, Description, Nanti dismiss, and Mulai Ulang triggers', () => {
+  const appJsPath = path.join(rootDir, 'apps/mobile/App.js');
+  const content = fs.readFileSync(appJsPath, 'utf8');
+
+  // 1. Banner Title
+  assert.ok(
+    content.includes('Pembaruan Sistem Siap'),
+    'Update banner must display title "Pembaruan Sistem Siap"'
+  );
+
+  // 2. Banner Description
+  assert.ok(
+    content.includes('Versi baru telah diunduh dan akan aktif saat aplikasi dibuka kembali.'),
+    'Update banner must explain non-disruptive activation on next launch'
+  );
+
+  // 3. Action 1: "Nanti" dismissing the banner
+  assert.match(
+    content,
+    /<TouchableOpacity[\s\S]*?setUpdateReady\(false\)[\s\S]*?>[\s\S]*?Nanti[\s\S]*?<\/TouchableOpacity>/,
+    'Update banner must provide "Nanti" action button that dismisses the banner'
+  );
+
+  // 4. Action 2: "Mulai Ulang" triggering guarded update restart
+  assert.match(
+    content,
+    /<TouchableOpacity[\s\S]*?handleApplyUpdate[\s\S]*?>[\s\S]*?Mulai Ulang[\s\S]*?<\/TouchableOpacity>/,
+    'Update banner must provide "Mulai Ulang" action button that invokes handleApplyUpdate'
+  );
+});
+
+test('Guarded restart contract: sets isRestarting, unmounts screens, and handles rejection safely', () => {
+  const appJsPath = path.join(rootDir, 'apps/mobile/App.js');
+  const content = fs.readFileSync(appJsPath, 'utf8');
+
+  // 1. handleApplyUpdate sets states
+  const handleApplyMatch = content.match(/const handleApplyUpdate = async \(\) => {([\s\S]*?)};/);
+  assert.ok(handleApplyMatch, 'handleApplyUpdate must be defined');
+  const handleApplyBody = handleApplyMatch[1];
+
+  assert.ok(
+    handleApplyBody.includes('setIsApplyingUpdate(true)'),
+    'handleApplyUpdate must set isApplyingUpdate to true'
+  );
+  assert.ok(
+    handleApplyBody.includes('setIsRestarting(true)'),
+    'handleApplyUpdate must set isRestarting to true'
+  );
+  assert.ok(
+    handleApplyBody.includes('setUpdateReady(false)'),
+    'handleApplyUpdate must hide banner when restarting'
+  );
+
+  // 2. Error handling resets state safely
+  assert.match(
+    handleApplyBody,
+    /try\s*\{[\s\S]*?Updates\.reloadAsync\(\)[\s\S]*?\}\s*catch[\s\S]*?setIsApplyingUpdate\(false\)[\s\S]*?setIsRestarting\(false\)/,
+    'handleApplyUpdate must handle reloadAsync rejection safely and reset states'
+  );
+
+  // 3. Overlay and clean screen unmount
+  assert.ok(
+    content.includes('enterpriseRestartOverlay'),
+    'App.js must render enterpriseRestartOverlay when isRestarting is true'
+  );
+  assert.ok(
+    content.includes('Memulai Ulang Sistem'),
+    'Restart overlay must display "Memulai Ulang Sistem"'
+  );
+  assert.match(
+    content,
+    /isRestarting\s*\?\s*\([\s\S]*?enterpriseRestartOverlay[\s\S]*?\)\s*:\s*!user\s*\?/,
+    'App.js must unmount screens (Login and MainApp screens) while isRestarting is active'
+  );
+});
+
 test('Typography Integrity: zero em dashes across updateManager test file', () => {
   const currentFileContent = fs.readFileSync(__filename, 'utf8');
   assert.strictEqual(currentFileContent.includes('\u2014'), false, 'updateManager.test.mjs must contain zero em dashes');

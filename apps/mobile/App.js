@@ -312,20 +312,27 @@ function MainApp() {
           </View>
         </View>
       )}
-          {updateReady && (
+      {updateReady && (
         <View style={styles.updateCard}>
-          <View style={styles.updateCardLeft}>
+          <View style={styles.updateCardHeader}>
             <View style={styles.updateIconWrapper}>
               <Ionicons name="sparkles" size={18} color="#d4af37" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.updateCardTitle}>Pembaruan Sistem Siap</Text>
               <Text style={styles.updateCardDesc}>
-                Versi baru telah diunduh. Terapkan sekarang atau otomatis saat membuka aplikasi kembali.
+                Versi baru telah diunduh dan akan aktif saat aplikasi dibuka kembali.
               </Text>
             </View>
           </View>
           <View style={styles.updateCardActions}>
+            <TouchableOpacity 
+              style={styles.updateDismissBtn} 
+              onPress={() => setUpdateReady(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.updateDismissBtnText}>Nanti</Text>
+            </TouchableOpacity>
             <TouchableOpacity 
               style={styles.updateApplyBtn} 
               onPress={handleApplyUpdate}
@@ -335,16 +342,8 @@ function MainApp() {
               {isApplyingUpdate ? (
                 <ActivityIndicator size="small" color="#12382c" />
               ) : (
-                <Text style={styles.updateApplyBtnText}>Terapkan</Text>
+                <Text style={styles.updateApplyBtnText}>Mulai Ulang</Text>
               )}
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.updateDismissBtn} 
-              onPress={() => setUpdateReady(false)}
-              activeOpacity={0.7}
-              accessibilityLabel="Tutup"
-            >
-              <Ionicons name="close" size={18} color="#cbd5e1" />
             </TouchableOpacity>
           </View>
         </View>
@@ -425,24 +424,19 @@ const getStyles = (theme, insets) => StyleSheet.create({
     right: 14,
     zIndex: 9999,
     backgroundColor: 'rgba(18, 56, 44, 0.98)',
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1.5,
     borderColor: '#d4af37',
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    padding: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
     elevation: 8,
   },
-  updateCardLeft: {
+  updateCardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 10,
+    alignItems: 'flex-start',
   },
   updateIconWrapper: {
     width: 32,
@@ -452,43 +446,51 @@ const getStyles = (theme, insets) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
+    marginTop: 2,
   },
   updateCardTitle: {
     color: '#d4af37',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   updateCardDesc: {
     color: '#ecfdf5',
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 12,
+    lineHeight: 17,
   },
   updateCardActions: {
     flexDirection: 'row',
+    justifyContent: 'flex-end',
     alignItems: 'center',
+    marginTop: 12,
+  },
+  updateDismissBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  updateDismissBtnText: {
+    color: '#cbd5e1',
+    fontSize: 12,
+    fontWeight: '600',
   },
   updateApplyBtn: {
     backgroundColor: '#d4af37',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 6,
   },
   updateApplyBtnText: {
     color: '#12382c',
     fontSize: 12,
     fontWeight: '700',
-  },
-  updateDismissBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
   enterpriseRestartOverlay: {
     position: 'absolute',
