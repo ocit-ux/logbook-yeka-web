@@ -73,7 +73,9 @@ function MainApp() {
   if (deviceBlocked) {
     return (
       <View style={{ flex: 1, backgroundColor: '#f8d7da', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-        <Text style={{ fontSize: 60 }}>🔒</Text>
+        <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(114, 28, 36, 0.1)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#721c24' }}>
+          <Ionicons name="lock-closed" size={44} color="#721c24" />
+        </View>
         <Text style={{ color: '#721c24', fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginTop: 20 }}>Akses Ditolak</Text>
         <Text style={{ color: '#721c24', fontSize: 16, textAlign: 'center', marginTop: 10, lineHeight: 24 }}>
           Sistem mendeteksi Anda menggunakan PC/Laptop atau Android Browser.{"\n\n"}
@@ -180,11 +182,11 @@ function MainApp() {
           if (isValid === false) {
             clearInterval(pollTimer);
             if (Platform.OS === 'web') {
-              window.alert('⚠️ KELUAR OTOMATIS!\n\nAkun Anda terdeteksi baru saja masuk di perangkat lain.');
+              window.alert('Peringatan Sesi\n\nAkun Anda terdeteksi baru saja masuk di perangkat lain.');
               setUser(null);
             } else {
               Alert.alert(
-                '⚠️ KELUAR OTOMATIS!',
+                'Peringatan Sesi',
                 'Akun Anda terdeteksi baru saja masuk di perangkat lain.',
                 [{ text: 'OK', onPress: () => setUser(null) }]
               );

@@ -53,8 +53,8 @@ export async function scheduleDailyReminder() {
   // 'calendar' dengan hour/minute/repeats sudah deprecated sejak v47
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: '📋 Waktunya Kirim Logbook!',
-      body: 'Jangan lupa isi jurnal kegiatan Anda hari ini ya.',
+      title: 'Pengingat: Pengisian Jurnal Harian',
+      body: 'Mohon lengkapi jurnal kegiatan kerja Anda hari ini.',
       data: { type: 'local_daily_reminder' },
       sound: 'notif.wav',
     },

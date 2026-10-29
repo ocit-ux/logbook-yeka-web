@@ -67,17 +67,17 @@ export function formatAccuracy(accuracy) {
  */
 export function formatGnssStatus({ isRooted, isMocked, location }) {
   if (isRooted) {
-    return '⚠️ HP Root Terdeteksi! Absensi diblokir.';
+    return 'Peringatan: Integritas sistem perangkat tidak memenuhi standar.';
   }
   if (isMocked) {
-    return '⚠️ Terdeteksi Fake GPS! Matikan lokasi palsu.';
+    return 'Peringatan: Lokasi tiruan (Mock Location) terdeteksi.';
   }
   if (location && isValidCoords(location)) {
     const coords = location.coords || location;
     const acc = formatAccuracy(coords.accuracy);
-    return `🛰️ Satelit GNSS Terkunci: ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)} (±${acc} m)`;
+    return `GPS Terkunci: ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)} (Akurasi ±${acc} m)`;
   }
-  return '🛰️ Mencari sinyal satelit GNSS... (Disarankan di luar ruangan/dekat jendela)';
+  return 'Mencari sinyal GPS...';
 }
 
 /**

@@ -438,7 +438,7 @@ export default function DashboardScreen({ user, onLogout }) {
         try { await cancelTodayReminder(); } catch (e) {}
 
         // Tampilkan pesan sukses sebentar tanpa pop-up
-        setSyncSuccessMsg('✅ Jurnal berhasil terkirim ke server admin!');
+        setSyncSuccessMsg('Jurnal absensi berhasil disinkronkan ke server.');
         setTimeout(() => setSyncSuccessMsg(''), 6000); // Hilang otomatis dalam 6 detik
 
         // Jika masih ada antrean, rekursif
@@ -540,17 +540,17 @@ export default function DashboardScreen({ user, onLogout }) {
 
     if (!resolvedCoords) {
       setLoading(false);
-      showAlert('Tunggu', 'Sedang mengunci sinyal satelit GNSS... Silakan tunggu beberapa detik atau pastikan Anda berada dekat jendela/luar ruangan.');
+      showAlert('Tunggu', 'Sedang mengunci sinyal GPS. Silakan tunggu beberapa saat atau pastikan perangkat berada di area terbuka.');
       return;
     }
 
     let statusKeamanan = 'AMAN (GPS Asli)';
     if (isMocked && rooted) {
-      statusKeamanan = '⚠️ TERDETEKSI FAKE GPS & ROOT';
+      statusKeamanan = 'TERDETEKSI FAKE GPS & ROOT';
     } else if (isMocked) {
-      statusKeamanan = '⚠️ TERDETEKSI FAKE GPS';
+      statusKeamanan = 'TERDETEKSI FAKE GPS';
     } else if (rooted) {
-      statusKeamanan = '⚠️ TERDETEKSI HP ROOT';
+      statusKeamanan = 'TERDETEKSI HP ROOT';
     }
     
     const isWfh = mode === 'izin' && form.kategoriIzin === 'WFH';
@@ -613,7 +613,10 @@ export default function DashboardScreen({ user, onLogout }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Halo, {user?.nama?.split(' ')[0] || 'Karyawan'} 👋</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="person-circle-outline" size={24} color="#d4af37" style={{ marginRight: 8 }} />
+            <Text style={styles.greeting}>Selamat Datang, {user?.nama?.split(' ')[0] || 'Karyawan'}</Text>
+          </View>
           <Text style={styles.date}>{new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
         </View>
         <TouchableOpacity style={styles.iconBtn} onPress={onLogout}>
@@ -798,8 +801,8 @@ export default function DashboardScreen({ user, onLogout }) {
           <Ionicons
             name={
               (isMocked || isRooted)
-                ? 'warning-outline'
-                : (location ? 'navigate-circle-outline' : 'radio-outline')
+                ? 'shield-alert-outline'
+                : (location ? 'navigate-circle' : 'locate-outline')
             }
             size={18}
             color={(isMocked || isRooted) ? theme.error : (location ? (theme.success || '#10b981') : (theme.textSecondary || '#6b7280'))}

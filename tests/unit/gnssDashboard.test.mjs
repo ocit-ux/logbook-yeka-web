@@ -112,7 +112,7 @@ test('formatGnssStatus: formats status message for rooted device', () => {
     isMocked: false,
     location: { latitude: -6.2, longitude: 106.8, accuracy: 5 }
   });
-  assert.strictEqual(status, '⚠️ HP Root Terdeteksi! Absensi diblokir.');
+  assert.strictEqual(status, 'Peringatan: Integritas sistem perangkat tidak memenuhi standar.');
 });
 
 test('formatGnssStatus: formats status message for mocked/fake GPS', () => {
@@ -121,7 +121,7 @@ test('formatGnssStatus: formats status message for mocked/fake GPS', () => {
     isMocked: true,
     location: { latitude: -6.2, longitude: 106.8, accuracy: 5 }
   });
-  assert.strictEqual(status, '⚠️ Terdeteksi Fake GPS! Matikan lokasi palsu.');
+  assert.strictEqual(status, 'Peringatan: Lokasi tiruan (Mock Location) terdeteksi.');
 });
 
 test('formatGnssStatus: formats locked status with 5 decimals and rounded accuracy in meters', () => {
@@ -130,7 +130,7 @@ test('formatGnssStatus: formats locked status with 5 decimals and rounded accura
     isMocked: false,
     location: { latitude: -6.2087654, longitude: 106.8456789, accuracy: 8.7 }
   });
-  assert.strictEqual(status, '🛰️ Satelit GNSS Terkunci: -6.20877, 106.84568 (±9 m)');
+  assert.strictEqual(status, 'GPS Terkunci: -6.20877, 106.84568 (Akurasi ±9 m)');
 });
 
 test('formatGnssStatus: formats searching status when location is null or searching', () => {
@@ -141,7 +141,7 @@ test('formatGnssStatus: formats searching status when location is null or search
   });
   assert.strictEqual(
     status,
-    '🛰️ Mencari sinyal satelit GNSS... (Disarankan di luar ruangan/dekat jendela)'
+    'Mencari sinyal GPS...'
   );
 });
 
@@ -181,7 +181,8 @@ test('DashboardScreen source code static integration contract: uses continuous w
   // 4. GNSS status badge
   assert.strictEqual(content.includes('formatGnssStatus'), true, 'Must use formatGnssStatus helper');
   const gnssContent = fs.readFileSync(path.join(rootDir, 'apps/mobile/src/utils/gnss.js'), 'utf8');
-  assert.strictEqual(gnssContent.includes('🛰️'), true, 'gnss.js must format satellite badge with emoji');
+  assert.strictEqual(gnssContent.includes('GPS Terkunci:'), true, 'gnss.js must format GPS badge cleanly');
+  assert.strictEqual(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/u.test(gnssContent), false, 'gnss.js must contain zero emojis');
 
   // 5. Must NOT have 15-second blocking timeout in submitAbsensi
   assert.strictEqual(content.includes('timeout: 15000'), false, 'Must eliminate 15s timeout in submitAbsensi');

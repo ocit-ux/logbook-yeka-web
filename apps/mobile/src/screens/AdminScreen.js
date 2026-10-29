@@ -150,8 +150,8 @@ export default function AdminScreen() {
           <h1>Laporan Jurnal Seluruh Karyawan</h1>
           <p style="color:#888; font-size:11px;">Dicetak: ${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}${filterBulan ? ` | Filter: ${filterBulan}` : ''}</p>
           <div class="summary">
-            <div class="sum-box sum-hadir">✅ Hadir: ${totalHadir}</div>
-            <div class="sum-box sum-izin">🟡 Izin/Sakit: ${totalIzin}</div>
+            <div class="sum-box sum-hadir">Hadir: ${totalHadir}</div>
+            <div class="sum-box sum-izin">Izin / Sakit: ${totalIzin}</div>
           </div>
           <table>
             <thead>
