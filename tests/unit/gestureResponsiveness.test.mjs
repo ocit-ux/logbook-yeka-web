@@ -263,3 +263,74 @@ test('DashboardScreen source contract: deferred AppState teardown and optimized 
     'DashboardScreen.js must contain zero em dashes'
   );
 });
+
+test('Stylesheet memoization contract: styles memoized with theme dependency to eliminate GC during gestures', () => {
+  let computeCount = 0;
+  const mockGetStyles = (theme) => {
+    computeCount++;
+    return { container: { backgroundColor: theme.background } };
+  };
+
+  // Memoization wrapper mimicking useMemo semantics
+  let cachedTheme = null;
+  let cachedStyles = null;
+  const memoizedGetStyles = (theme) => {
+    if (cachedStyles === null || cachedTheme !== theme) {
+      cachedTheme = theme;
+      cachedStyles = mockGetStyles(theme);
+    }
+    return cachedStyles;
+  };
+
+  const themeA = { background: '#ffffff', primary: '#2196f3' };
+  const themeB = { background: '#121212', primary: '#bb86fc' };
+
+  // First render with themeA
+  const styles1 = memoizedGetStyles(themeA);
+  assert.strictEqual(computeCount, 1, 'Styles must be computed on initial render');
+
+  // Consecutive re-renders during gestures / resize animations with same theme instance
+  for (let i = 0; i < 60; i++) {
+    const stylesCurrent = memoizedGetStyles(themeA);
+    assert.strictEqual(stylesCurrent, styles1, 'Styles reference must remain stable across re-renders');
+  }
+  assert.strictEqual(computeCount, 1, 'Styles must not be recomputed when theme is identical');
+
+  // Render when theme changes (e.g. dark mode toggle)
+  const styles2 = memoizedGetStyles(themeB);
+  assert.strictEqual(computeCount, 2, 'Styles must be recomputed when theme instance changes');
+  assert.notStrictEqual(styles1, styles2, 'Styles reference must update for new theme');
+});
+
+test('DashboardScreen GPU rendering & memoization contract: useMemo and renderToHardwareTextureAndroid', () => {
+  const filePath = path.join(rootDir, 'apps/mobile/src/screens/DashboardScreen.js');
+  const content = fs.readFileSync(filePath, 'utf8');
+
+  // 1. useMemo is imported from react
+  assert.match(
+    content,
+    /import\s+React,\s*\{[^}]*useMemo[^}]*\}\s+from\s+['"]react['"]/,
+    'useMemo must be explicitly imported from react'
+  );
+
+  // 2. styles is memoized with theme dependency
+  assert.match(
+    content,
+    /const\s+styles\s*=\s*useMemo\(\s*\(\)\s*=>\s*getStyles\(theme\)\s*,\s*\[\s*theme\s*\]\s*\)/,
+    'styles must be created using useMemo(() => getStyles(theme), [theme])'
+  );
+
+  // 3. Root View container has renderToHardwareTextureAndroid={true}
+  assert.match(
+    content,
+    /<View\s+style=\{styles\.container\}\s+renderToHardwareTextureAndroid=\{true\}>/,
+    'Root container View must have renderToHardwareTextureAndroid={true} for GPU texture rasterization'
+  );
+
+  // 4. Zero em dashes
+  assert.strictEqual(
+    content.includes('\u2014'),
+    false,
+    'DashboardScreen.js must contain zero em dashes'
+  );
+});

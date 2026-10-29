@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Image, TextInput, ActivityIndicator, Modal, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, AppState } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -646,12 +646,12 @@ export default function DashboardScreen({ user, onLogout }) {
     }
   };
 
-  const styles = getStyles(theme);
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
 
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} renderToHardwareTextureAndroid={true}>
       <View style={styles.header}>
         <View style={styles.headerProfile}>
           <View style={styles.avatarBadge}>
