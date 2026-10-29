@@ -144,6 +144,57 @@ export default function DashboardScreen({ user, onLogout }) {
     }
   };
 
+  const fetchWilayahAsync = async (latitude, longitude) => {
+    if (latitude == null || longitude == null) return;
+    try {
+      let wilayahText = '';
+      if (Platform.OS !== 'web') {
+        try {
+          const res = await Location.reverseGeocodeAsync({ latitude, longitude });
+          if (res && res.length > 0) {
+            const item = res[0];
+            const parts = [
+              item.district || item.subregion,
+              item.city || item.region
+            ].filter(Boolean);
+            if (parts.length > 0) {
+              wilayahText = parts.join(', ');
+            }
+          }
+        } catch (locErr) {
+          // Fallback ke backend API jika reverseGeocode native tidak tersedia
+        }
+      }
+
+      if (!wilayahText) {
+        try {
+          const apiRes = await axios.post(
+            API_URL,
+            { action: 'reverseGeocode', data: { gps: `${latitude},${longitude}` } },
+            { timeout: 8000 }
+          );
+          if (apiRes.data?.status === 'success' && apiRes.data?.data) {
+            const d = apiRes.data.data;
+            if (typeof d === 'string') {
+              wilayahText = d;
+            } else if (typeof d === 'object') {
+              const parts = [d.desa, d.kecamatan, d.kabupaten].filter(p => p && p !== '-');
+              wilayahText = parts.join(', ');
+            }
+          }
+        } catch (apiErr) {}
+      }
+
+      if (wilayahText) {
+        setWilayah(wilayahText);
+        AsyncStorage.setItem(
+          '@last_known_wilayah',
+          JSON.stringify({ latitude, longitude, wilayahText, timestamp: Date.now() })
+        ).catch(() => {});
+      }
+    } catch (err) {}
+  };
+
   useEffect(() => {
     // Jalankan semua inisialisasi secara paralel agar tidak blocking satu sama lain
     Promise.all([
@@ -162,6 +213,13 @@ export default function DashboardScreen({ user, onLogout }) {
               setLocation(parsedLoc);
             } else {
               await AsyncStorage.removeItem('@last_known_location');
+            }
+          }
+          const lastWil = await AsyncStorage.getItem('@last_known_wilayah');
+          if (lastWil) {
+            const parsedWil = JSON.parse(lastWil);
+            if (parsedWil.wilayahText) {
+              setWilayah(parsedWil.wilayahText);
             }
           }
           
@@ -184,6 +242,7 @@ export default function DashboardScreen({ user, onLogout }) {
           const freshCoords = { ...loc.coords, timestamp: Date.now() };
           setLocation(freshCoords);
           AsyncStorage.setItem('@last_known_location', JSON.stringify(freshCoords));
+          fetchWilayahAsync(freshCoords.latitude, freshCoords.longitude);
         }).catch(() => {});
       })(),
 
@@ -700,6 +759,7 @@ export default function DashboardScreen({ user, onLogout }) {
             />
           ) : (
             <NativeCamera 
+              watermarkMeta={{ user, location, wilayah }}
               theme={theme}
               onClose={() => setShowCameraModal(false)}
               onCapture={(photoData) => {

@@ -4,8 +4,9 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { stampWatermarkNativeAsync } from '../utils/watermark';
 
-export default function NativeCamera({ onCapture, onClose }) {
+export default function NativeCamera({ onCapture, onClose, theme, watermarkMeta }) {
   if (Platform.OS === 'web') return null;
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -72,7 +73,17 @@ export default function NativeCamera({ onCapture, onClose }) {
           return;
         }
 
-        onCapture(manipResult);
+        let finalResult = manipResult;
+        try {
+          if (watermarkMeta) {
+            finalResult = await stampWatermarkNativeAsync(manipResult.base64, watermarkMeta);
+          }
+        } catch (wmErr) {
+          console.warn('Gagal menambahkan watermark pada foto:', wmErr);
+          finalResult = manipResult;
+        }
+
+        onCapture(finalResult);
       } catch (e) {
         console.log(e);
         setIsProcessing(false);
