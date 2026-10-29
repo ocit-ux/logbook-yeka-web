@@ -34,6 +34,55 @@ function resolveEasCommand(baseDir = __dirname, platform = process.platform, dep
   return platform === 'win32' ? 'npx.cmd --yes eas-cli' : 'npx --yes eas-cli';
 }
 
+function resolveGhPagesCommand(baseDir = __dirname, platform = process.platform, deps = {}) {
+  const fsImpl = deps.fs || (deps.existsSync ? deps : fs);
+  const execSyncImpl = deps.execSync || (typeof deps === 'function' ? deps : execSync);
+  const pathImpl = deps.path || (platform === 'win32' ? path.win32 : path.posix);
+
+  const binName = platform === 'win32' ? 'gh-pages.cmd' : 'gh-pages';
+
+  // 1. Periksa node_modules/.bin lokal
+  const localBin = pathImpl.join(baseDir, 'node_modules', '.bin', binName);
+  if (fsImpl.existsSync && fsImpl.existsSync(localBin)) {
+    return `"${localBin}"`;
+  }
+
+  // 2. Periksa root monorepo
+  const rootBin = pathImpl.resolve(baseDir, '../../node_modules/.bin', binName);
+  if (fsImpl.existsSync && fsImpl.existsSync(rootBin)) {
+    return `"${rootBin}"`;
+  }
+
+  // 3. Periksa PATH sistem
+  try {
+    const checkCmd = platform === 'win32' ? 'where gh-pages' : 'which gh-pages';
+    execSyncImpl(checkCmd, { stdio: 'ignore' });
+    return 'gh-pages';
+  } catch {
+    // tidak di PATH
+  }
+
+  // 4. Fallback npx
+  return platform === 'win32' ? 'npx.cmd --yes gh-pages' : 'npx --yes gh-pages';
+}
+
+function resolveExpoExportCommand(baseDir = __dirname, platform = process.platform, deps = {}) {
+  const fsImpl = deps.fs || (deps.existsSync ? deps : fs);
+  const pathImpl = deps.path || (platform === 'win32' ? path.win32 : path.posix);
+
+  const localBin = pathImpl.join(baseDir, 'node_modules', '.bin', platform === 'win32' ? 'expo.cmd' : 'expo');
+  if (fsImpl.existsSync && fsImpl.existsSync(localBin)) {
+    return `"${localBin}" export -p web`;
+  }
+
+  const rootBin = pathImpl.resolve(baseDir, '../../node_modules/.bin', platform === 'win32' ? 'expo.cmd' : 'expo');
+  if (fsImpl.existsSync && fsImpl.existsSync(rootBin)) {
+    return `"${rootBin}" export -p web`;
+  }
+
+  return platform === 'win32' ? 'npx.cmd --yes expo export -p web' : 'npx --yes expo export -p web';
+}
+
 function runUpdate() {
   // 1. Ambil Token dari variabel environment atau file .env
   if (fs.existsSync(path.join(__dirname, '.env'))) {
@@ -50,28 +99,32 @@ function runUpdate() {
   const TOKEN_IOS = process.env.EXPO_TOKEN_IOS || '';
 
   if (!TOKEN_ANDROID || !TOKEN_IOS) {
-    console.error("❌ ERROR: Token belum dimasukkan! Pastikan Anda sudah mengisi file .env");
+    console.error("[ERROR] Token belum dimasukkan! Pastikan file .env telah dikonfigurasi.");
     process.exit(1);
   }
 
   const easCmd = resolveEasCommand(__dirname, process.platform);
-  console.log(`==> Menggunakan executable EAS: ${easCmd}`);
+  const ghPagesCmd = resolveGhPagesCommand(__dirname, process.platform);
+  const expoExportCmd = resolveExpoExportCommand(__dirname, process.platform);
+
+  console.log(`==> Executable EAS: ${easCmd}`);
+  console.log(`==> Executable GitHub Pages: ${ghPagesCmd}`);
+  console.log(`==> Executable Expo Web Export: ${expoExportCmd}`);
 
   const appJsonPath = path.join(__dirname, 'app.json');
   let originalAppJson = '';
 
+  const rawMsg = process.argv[2] || "Update Otomatis";
+  const msg = rawMsg.replace(/^["']|["']$/g, '');
+  console.log(`\n[PROSES] Memulai pembaruan sinkronisasi Android & iOS Web App (Pesan: "${msg}")...\n`);
+
+  // ==========================================
+  // TAHAP 1: UPDATE CLOUD EXPO (ANDROID)
+  // ==========================================
   try {
-    // Simpan kondisi asli app.json untuk berjaga-jaga
     originalAppJson = fs.readFileSync(appJsonPath, 'utf8');
     const appConfig = JSON.parse(originalAppJson);
 
-    const rawMsg = process.argv[2] || "Update Otomatis";
-    const msg = rawMsg.replace(/^["']|["']$/g, '');
-    console.log(`\n🚀 MEMULAI UPDATE GHAIB (Pesan: "${msg}")...\n`);
-
-    // ==========================================
-    // UPDATE GHOIB KE EXPO (Akun: admin-yeka)
-    // ==========================================
     console.log("==> 1. Konfigurasi App.json (admin-yeka)...");
     appConfig.expo.owner = "admin-yeka";
     if (!appConfig.expo.extra) appConfig.expo.extra = {};
@@ -86,7 +139,7 @@ function runUpdate() {
     console.log("==> Mengunggah ke Cloud Expo (Preview)...");
     execSync(`${easCmd} update --branch preview --message "${msg}" --environment preview`, {
       cwd: __dirname,
-      env: { ...process.env, EXPO_TOKEN: TOKEN_IOS, CI: '1' }, // Pake token iOS karena sekarang satu akun
+      env: { ...process.env, EXPO_TOKEN: TOKEN_IOS, CI: '1' },
       stdio: 'inherit'
     });
 
@@ -97,17 +150,38 @@ function runUpdate() {
       stdio: 'inherit'
     });
 
-    console.log("\n✅ SEMUA UPDATE SELESAI DENGAN SUKSES! Aplikasi pengguna akan otomatis terupdate saat dibuka ulang.\n");
-
+    console.log("[SUKSES] Pembaruan Android ke Cloud Expo selesai.");
   } catch (error) {
-    console.error("\n❌ Terjadi kesalahan saat update:", error.message);
+    console.error("[ERROR] Terjadi kesalahan saat update Cloud Expo Android:", error.message);
   } finally {
-    // Selalu kembalikan app.json ke kondisi semula agar git tetap bersih
     if (originalAppJson) {
       fs.writeFileSync(appJsonPath, originalAppJson);
       console.log("==> app.json berhasil dikembalikan ke posisi semula.");
     }
   }
+
+  // ==========================================
+  // TAHAP 2: UPDATE WEB APP IOS (GITHUB PAGES)
+  // ==========================================
+  try {
+    console.log("\n==> 2. Membangun bundel Web App iOS (dist)...");
+    execSync(expoExportCmd, {
+      cwd: __dirname,
+      stdio: 'inherit'
+    });
+
+    console.log("==> Mengunggah Web App iOS ke GitHub Pages (logbook-yeka-web)...");
+    execSync(`${ghPagesCmd} -d dist -r https://github.com/ocit-ux/logbook-yeka-web.git -b main -m "${msg}"`, {
+      cwd: __dirname,
+      stdio: 'inherit'
+    });
+
+    console.log("[SUKSES] Web App iOS berhasil dipublikasikan ke GitHub Pages!");
+  } catch (error) {
+    console.error("[ERROR] Terjadi kesalahan saat deploy Web App iOS ke GitHub Pages:", error.message);
+  }
+
+  console.log("\n[SELESAI] Seluruh rangkaian pembaruan Android & iOS Web App telah diproses.\n");
 }
 
 if (require.main === module) {
@@ -116,5 +190,7 @@ if (require.main === module) {
 
 module.exports = {
   resolveEasCommand,
+  resolveGhPagesCommand,
+  resolveExpoExportCommand,
   runUpdate
 };

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import path from 'node:path';
-import { resolveEasCommand } from '../../apps/mobile/update-semua.js';
+import { resolveEasCommand, resolveGhPagesCommand, resolveExpoExportCommand } from '../../apps/mobile/update-semua.js';
 
 test('resolveEasCommand on win32 prefers local node_modules bin if present', () => {
   const baseDir = 'C:\\workspace\\apps\\mobile';
@@ -138,4 +138,53 @@ test('resolveEasCommand defaults to baseDir and process.platform without throwin
   } else {
     assert.ok(cmd.includes('eas') || cmd.includes('npx'));
   }
+});
+
+test('resolveGhPagesCommand on win32 prefers local bin if present', () => {
+  const baseDir = 'C:\\workspace\\apps\\mobile';
+  const expectedLocal = `"${path.win32.join(baseDir, 'node_modules', '.bin', 'gh-pages.cmd')}"`;
+
+  const mockFs = {
+    existsSync: (p) => p === path.win32.join(baseDir, 'node_modules', '.bin', 'gh-pages.cmd')
+  };
+
+  const cmd = resolveGhPagesCommand(baseDir, 'win32', { fs: mockFs });
+  assert.strictEqual(cmd, expectedLocal);
+});
+
+test('resolveGhPagesCommand on win32 falls back to npx.cmd when not in PATH', () => {
+  const baseDir = 'C:\\workspace\\apps\\mobile';
+  const mockFs = { existsSync: () => false };
+  const mockExecSync = () => {
+    const error = new Error('not found');
+    error.status = 1;
+    throw error;
+  };
+
+  const cmd = resolveGhPagesCommand(baseDir, 'win32', { fs: mockFs, execSync: mockExecSync });
+  assert.strictEqual(cmd, 'npx.cmd --yes gh-pages');
+});
+
+test('resolveGhPagesCommand on unix falls back to npx when not in PATH', () => {
+  const baseDir = '/workspace/apps/mobile';
+  const mockFs = { existsSync: () => false };
+  const mockExecSync = () => {
+    const error = new Error('not found');
+    error.status = 1;
+    throw error;
+  };
+
+  const cmd = resolveGhPagesCommand(baseDir, 'linux', { fs: mockFs, execSync: mockExecSync });
+  assert.strictEqual(cmd, 'npx --yes gh-pages');
+});
+
+test('resolveExpoExportCommand resolves local or root bin or falls back to npx', () => {
+  const baseDir = 'C:\\workspace\\apps\\mobile';
+  const mockFs = { existsSync: () => false };
+
+  const cmd = resolveExpoExportCommand(baseDir, 'win32', { fs: mockFs });
+  assert.strictEqual(cmd, 'npx.cmd --yes expo export -p web');
+
+  const cmdUnix = resolveExpoExportCommand(baseDir, 'linux', { fs: mockFs });
+  assert.strictEqual(cmdUnix, 'npx --yes expo export -p web');
 });
