@@ -14,6 +14,7 @@ import RiwayatScreen from './src/screens/RiwayatScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import AdminScreen from './src/screens/AdminScreen';
 import AdminKaryawanScreen from './src/screens/AdminKaryawanScreen';
+import EnterpriseAlertModal from './src/components/EnterpriseAlertModal';
 import { getExpoPushToken, setupNotificationReceivedListener } from './src/utils/notifications';
 
 function MainApp() {
@@ -84,28 +85,41 @@ function MainApp() {
 
   const lastUpdateCheckRef = useRef(0);
 
+  const [isUpdating, setIsUpdating] = useState(false);
+
   useEffect(() => {
     const checkAutoUpdate = async () => {
       if (Platform.OS === 'web' || __DEV__) return;
       const now = Date.now();
-      if (now - lastUpdateCheckRef.current < 60000) return;
+      if (now - lastUpdateCheckRef.current < 15000) return;
       lastUpdateCheckRef.current = now;
       try {
         const update = await Updates.checkForUpdateAsync();
         if (update.isAvailable) {
+          setIsUpdating(true);
           await Updates.fetchUpdateAsync();
           await Updates.reloadAsync();
         }
-      } catch (e) {}
+      } catch (e) {
+        setIsUpdating(false);
+      }
     };
 
     checkAutoUpdate();
+    // Polling live di latar belakang tiap 30 detik saat aplikasi tetap menyala
+    const liveUpdateInterval = setInterval(() => {
+      if (AppState.currentState === 'active') {
+        checkAutoUpdate();
+      }
+    }, 30000);
+
     const appStateSub = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active') checkAutoUpdate();
     });
     const notifSub = setupNotificationReceivedListener();
 
     return () => {
+      clearInterval(liveUpdateInterval);
       appStateSub?.remove?.();
       notifSub?.remove?.();
     };
@@ -129,7 +143,7 @@ function MainApp() {
     }
   };
 
-  // Auto-login dari cache — instan tanpa perlu network
+  // Auto-login dari cache - instan tanpa perlu network
   useEffect(() => {
     (async () => {
       try {
@@ -269,6 +283,13 @@ function MainApp() {
           </View>
         </View>
       )}
+          {isUpdating && (
+        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, backgroundColor: "rgba(15,45,36,0.96)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+          <Ionicons name="cloud-download-outline" size={56} color="#d4af37" style={{ marginBottom: 16 }} />
+          <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold", textAlign: "center", marginBottom: 8 }}>Memperbarui Sistem...</Text>
+          <Text style={{ color: "#cbd5e1", fontSize: 13, textAlign: "center", lineHeight: 20 }}>Pembaruan kilat sedang dipasang. Aplikasi akan restart otomatis dalam beberapa detik...</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -304,6 +325,7 @@ export default function App() {
       <SafeAreaProvider>
         <ThemeProvider>
           <MainApp />
+          <EnterpriseAlertModal />
         </ThemeProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
