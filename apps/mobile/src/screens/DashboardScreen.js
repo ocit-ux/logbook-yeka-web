@@ -612,15 +612,27 @@ export default function DashboardScreen({ user, onLogout }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="person-circle-outline" size={24} color="#d4af37" style={{ marginRight: 8 }} />
-            <Text style={styles.greeting}>Selamat Datang, {user?.nama?.split(' ')[0] || 'Karyawan'}</Text>
+        <View style={styles.headerProfile}>
+          <View style={styles.avatarBadge}>
+            <Text style={styles.avatarInitial}>
+              {(user?.nama?.trim()?.[0] || 'K').toUpperCase()}
+            </Text>
           </View>
-          <Text style={styles.date}>{new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+          <View style={styles.headerTextGroup}>
+            <Text style={styles.welcomeLabel}>SELAMAT DATANG</Text>
+            <Text style={styles.employeeName} numberOfLines={1}>
+              {user?.nama?.split(' ')[0] || 'Karyawan'}
+            </Text>
+            <View style={styles.dateRow}>
+              <Ionicons name="calendar-outline" size={13} color="#d4af37" style={{ marginRight: 4 }} />
+              <Text style={styles.dateText}>
+                {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </Text>
+            </View>
+          </View>
         </View>
-        <TouchableOpacity style={styles.iconBtn} onPress={onLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#fff" />
+        <TouchableOpacity style={styles.logoutBtn} onPress={onLogout} activeOpacity={0.8} accessibilityLabel="Keluar">
+          <Ionicons name="log-out-outline" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -884,17 +896,80 @@ const getStyles = (theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.background },
   header: { 
     backgroundColor: theme.primary, 
-    padding: 24, 
-    paddingTop: 48, 
+    paddingHorizontal: 20, 
+    paddingVertical: 18, 
+    paddingTop: Platform.OS === 'ios' ? 52 : 44, 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
     borderBottomWidth: 3,
-    borderBottomColor: theme.secondary 
+    borderBottomColor: '#d4af37' 
   },
-  greeting: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
-  date: { color: '#e5e7eb', fontSize: 12, marginTop: 4 },
-  iconBtn: { padding: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8 },
+  headerProfile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  avatarBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(18, 56, 44, 0.95)',
+    borderWidth: 2,
+    borderColor: '#d4af37',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  avatarInitial: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  headerTextGroup: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  welcomeLabel: {
+    color: '#d4af37',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    marginBottom: 1,
+  },
+  employeeName: {
+    color: '#ffffff',
+    fontSize: 19,
+    fontWeight: 'bold',
+    letterSpacing: -0.2,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 3,
+  },
+  dateText: {
+    color: 'rgba(236, 253, 245, 0.85)',
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  logoutBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   content: { padding: 16 },
   
   toggleContainer: {
