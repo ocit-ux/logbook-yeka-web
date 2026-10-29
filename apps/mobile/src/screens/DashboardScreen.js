@@ -111,6 +111,7 @@ export default function DashboardScreen({ user, onLogout }) {
 
   const locationWatcherSubRef = React.useRef(null);
   const lastGeocodedCoordsRef = React.useRef(null);
+  const appStateTeardownTimeoutRef = React.useRef(null);
 
   const [mode, setMode] = useState('hadir'); // 'hadir' | 'izin'
   const [showCameraModal, setShowCameraModal] = useState(false);
@@ -207,8 +208,11 @@ export default function DashboardScreen({ user, onLogout }) {
 
     const startGnssWatcher = async () => {
       try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
+        let perm = await Location.getForegroundPermissionsAsync();
+        if (perm.status !== 'granted') {
+          perm = await Location.requestForegroundPermissionsAsync();
+        }
+        if (perm.status !== 'granted') {
           showAlert('Izin Ditolak', 'Izin lokasi GPS dibutuhkan untuk absensi.');
           return;
         }
@@ -221,8 +225,8 @@ export default function DashboardScreen({ user, onLogout }) {
         const sub = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.Highest,
-            timeInterval: 3000,
-            distanceInterval: 1
+            timeInterval: 4500, // GNSS interval (previously timeInterval: 3000)
+            distanceInterval: 2 // distance interval (previously distanceInterval: 1)
           },
           (loc) => {
             if (!isMounted || !loc) return;
@@ -332,17 +336,33 @@ export default function DashboardScreen({ user, onLogout }) {
     // Navitel-style GNSS watcher AppState pause & resume
     const appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
-        startGnssWatcher();
-      } else if (nextAppState.match(/inactive|background/)) {
-        if (locationWatcherSubRef.current && typeof locationWatcherSubRef.current.remove === 'function') {
-          locationWatcherSubRef.current.remove();
-          locationWatcherSubRef.current = null;
+        if (appStateTeardownTimeoutRef.current) {
+          clearTimeout(appStateTeardownTimeoutRef.current);
+          appStateTeardownTimeoutRef.current = null;
         }
+        if (!locationWatcherSubRef.current) {
+          startGnssWatcher();
+        }
+      } else if (nextAppState.match(/inactive|background/)) {
+        if (appStateTeardownTimeoutRef.current) {
+          clearTimeout(appStateTeardownTimeoutRef.current);
+        }
+        appStateTeardownTimeoutRef.current = setTimeout(() => {
+          if (locationWatcherSubRef.current && typeof locationWatcherSubRef.current.remove === 'function') {
+            locationWatcherSubRef.current.remove();
+            locationWatcherSubRef.current = null;
+          }
+          appStateTeardownTimeoutRef.current = null;
+        }, 350);
       }
     });
 
     return () => {
       isMounted = false;
+      if (appStateTeardownTimeoutRef.current) {
+        clearTimeout(appStateTeardownTimeoutRef.current);
+        appStateTeardownTimeoutRef.current = null;
+      }
       if (locationWatcherSubRef.current && typeof locationWatcherSubRef.current.remove === 'function') {
         locationWatcherSubRef.current.remove();
         locationWatcherSubRef.current = null;
