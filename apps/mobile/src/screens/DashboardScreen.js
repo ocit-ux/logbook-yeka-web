@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Image, TextInput, ActivityIndicator, Modal, TouchableWithoutFeedback, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Image, TextInput, ActivityIndicator, Modal, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, AppState } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,8 +12,11 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { registerForPushNotificationsAsync, scheduleDailyReminder, cancelTodayReminder } from '../utils/notifications';
 import { showAlert } from '../utils/alert';
 import { getDeviceInfo, isMockedLocation, isDeviceRooted } from '../utils/device';
+import { selectSubmissionCoords, formatGnssStatus, formatAccuracy, isValidCoords } from '../utils/gnss';
 import WebCamera from '../components/WebCamera';
 import NativeCamera from '../components/NativeCamera';
+
+export { selectSubmissionCoords };
 
 const JSWheelPicker = ({ items, selectedValue, onValueChange, theme }) => {
   const itemHeight = 50;
@@ -104,6 +107,9 @@ export default function DashboardScreen({ user, onLogout }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const isSyncingRef = React.useRef(false);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('');
+
+  const locationWatcherSubRef = React.useRef(null);
+  const lastGeocodedCoordsRef = React.useRef(null);
 
   const [mode, setMode] = useState('hadir'); // 'hadir' | 'izin'
   const [showCameraModal, setShowCameraModal] = useState(false);
@@ -196,21 +202,64 @@ export default function DashboardScreen({ user, onLogout }) {
   };
 
   useEffect(() => {
-    // Jalankan semua inisialisasi secara paralel agar tidak blocking satu sama lain
-    Promise.all([
-      // 1. GPS: coba cache dulu, kalau tidak ada baru minta dari hardware
-      (async () => {
-        let { status } = await Location.requestForegroundPermissionsAsync();
+    let isMounted = true;
+
+    const startGnssWatcher = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
           showAlert('Izin Ditolak', 'Izin lokasi GPS dibutuhkan untuk absensi.');
           return;
         }
+
+        if (locationWatcherSubRef.current && typeof locationWatcherSubRef.current.remove === 'function') {
+          locationWatcherSubRef.current.remove();
+          locationWatcherSubRef.current = null;
+        }
+
+        const sub = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.Highest,
+            timeInterval: 3000,
+            distanceInterval: 1
+          },
+          (loc) => {
+            if (!isMounted || !loc) return;
+            if (isMockedLocation(loc)) {
+              setIsMocked(true);
+              return;
+            }
+            setIsMocked(false);
+            const freshCoords = { ...loc.coords, timestamp: Date.now() };
+            setLocation(freshCoords);
+            AsyncStorage.setItem('@last_known_location', JSON.stringify(freshCoords)).catch(() => {});
+
+            // Update wilayah in background when moved significantly (> ~150m)
+            const last = lastGeocodedCoordsRef.current;
+            if (!last || Math.abs(freshCoords.latitude - last.latitude) > 0.0015 || Math.abs(freshCoords.longitude - last.longitude) > 0.0015) {
+              lastGeocodedCoordsRef.current = freshCoords;
+              fetchWilayahAsync(freshCoords.latitude, freshCoords.longitude);
+            }
+          }
+        );
+
+        locationWatcherSubRef.current = sub;
+      } catch (err) {
+        // Fallback gracefully on environments where watchPositionAsync is unsupported
+      }
+    };
+
+    // Jalankan semua inisialisasi secara paralel agar tidak blocking satu sama lain
+    Promise.all([
+      // 1. GPS: coba cache dulu, lalu aktifkan Navitel GNSS continuous watcher
+      (async () => {
         try {
           const lastLoc = await AsyncStorage.getItem('@last_known_location');
           if (lastLoc) {
             const parsedLoc = JSON.parse(lastLoc);
             if (parsedLoc.timestamp && (Date.now() - parsedLoc.timestamp < 300000)) {
               setLocation(parsedLoc);
+              lastGeocodedCoordsRef.current = parsedLoc;
             } else {
               await AsyncStorage.removeItem('@last_known_location');
             }
@@ -229,21 +278,8 @@ export default function DashboardScreen({ user, onLogout }) {
             setSyncCount(qArr.length);
           }
         } catch(e) {}
-        Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-          maximumAge: 10000
-        }).then(loc => {
-          if (isMockedLocation(loc)) {
-            setIsMocked(true);
-            setLocation(null);
-            return;
-          }
-          setIsMocked(false);
-          const freshCoords = { ...loc.coords, timestamp: Date.now() };
-          setLocation(freshCoords);
-          AsyncStorage.setItem('@last_known_location', JSON.stringify(freshCoords));
-          fetchWilayahAsync(freshCoords.latitude, freshCoords.longitude);
-        }).catch(() => {});
+
+        await startGnssWatcher();
       })(),
 
       // 2. PilihanIzin: cache di AsyncStorage, hanya fetch ulang sekali sehari
@@ -255,7 +291,7 @@ export default function DashboardScreen({ user, onLogout }) {
           axios.post(API_URL, { action: 'getPilihanIzin' }, { timeout: 10000 })
             .then(res => {
               if (res.data?.status === 'success' && res.data?.data?.data?.length > 0) {
-                const mapped = res.data.data.data.map(item => ({ label: item, value: item }));
+                const mapped = res.data.data.map(item => ({ label: item, value: item }));
                 setPilihanIzin(mapped);
                 AsyncStorage.setItem('@pilihan_izin_cache', JSON.stringify(mapped));
               }
@@ -291,6 +327,29 @@ export default function DashboardScreen({ user, onLogout }) {
 
       loadDraft()
     ]);
+
+    // Navitel-style GNSS watcher AppState pause & resume
+    const appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        startGnssWatcher();
+      } else if (nextAppState.match(/inactive|background/)) {
+        if (locationWatcherSubRef.current && typeof locationWatcherSubRef.current.remove === 'function') {
+          locationWatcherSubRef.current.remove();
+          locationWatcherSubRef.current = null;
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      if (locationWatcherSubRef.current && typeof locationWatcherSubRef.current.remove === 'function') {
+        locationWatcherSubRef.current.remove();
+        locationWatcherSubRef.current = null;
+      }
+      if (appStateSubscription && typeof appStateSubscription.remove === 'function') {
+        appStateSubscription.remove();
+      }
+    };
   }, []);
 
   const loadDraft = async () => {
@@ -437,32 +496,58 @@ export default function DashboardScreen({ user, onLogout }) {
     const rooted = isRooted || (await isDeviceRooted());
     if (rooted) setIsRooted(true);
 
-    let currentCoords = (location && location.timestamp && (Date.now() - location.timestamp < 300000)) ? location : null;
-    let isCurrentMocked = isMocked;
+    // Fast-path coordinate selection hierarchy:
+    // 1. photoCoords (locked at watermark capture time)
+    // 2. location state (actively tracked by continuous GNSS watcher)
+    // 3. cachedLocation (< 5 min)
+    let cachedLoc = null;
     try {
-      const freshLoc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Highest,
-        maximumAge: 10000,
-        timeout: 15000
-      });
-      isCurrentMocked = isMockedLocation(freshLoc);
-      setIsMocked(isCurrentMocked);
-      const freshCoords = { ...freshLoc.coords, timestamp: Date.now() };
-      currentCoords = freshCoords;
-      setLocation(freshCoords);
-      AsyncStorage.setItem('@last_known_location', JSON.stringify(freshCoords));
+      const rawCached = await AsyncStorage.getItem('@last_known_location');
+      if (rawCached) cachedLoc = JSON.parse(rawCached);
     } catch (e) {}
 
-    if (!currentCoords) {
+    let resolvedCoords = selectSubmissionCoords({
+      photoCoords: photo?.coords,
+      currentLocation: location,
+      cachedLocation: cachedLoc
+    });
+
+    // 4. Fast fallback race (2.5s) only if no coords resolved yet
+    if (!resolvedCoords) {
+      try {
+        const freshLoc = await Promise.race([
+          Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Highest,
+            maximumAge: 10000
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('GNSS Timeout')), 2500))
+        ]);
+        if (freshLoc && !isMockedLocation(freshLoc)) {
+          const freshCoords = { ...freshLoc.coords, timestamp: Date.now() };
+          setLocation(freshCoords);
+          AsyncStorage.setItem('@last_known_location', JSON.stringify(freshCoords)).catch(() => {});
+          resolvedCoords = {
+            latitude: freshCoords.latitude,
+            longitude: freshCoords.longitude,
+            accuracy: freshCoords.accuracy || 5,
+            source: 'fresh'
+          };
+        } else if (freshLoc && isMockedLocation(freshLoc)) {
+          setIsMocked(true);
+        }
+      } catch (err) {}
+    }
+
+    if (!resolvedCoords) {
       setLoading(false);
-      showAlert('Tunggu', 'Sedang mengunci lokasi GPS...');
+      showAlert('Tunggu', 'Sedang mengunci sinyal satelit GNSS... Silakan tunggu beberapa detik atau pastikan Anda berada dekat jendela/luar ruangan.');
       return;
     }
 
     let statusKeamanan = 'AMAN (GPS Asli)';
-    if (isCurrentMocked && rooted) {
+    if (isMocked && rooted) {
       statusKeamanan = '⚠️ TERDETEKSI FAKE GPS & ROOT';
-    } else if (isCurrentMocked) {
+    } else if (isMocked) {
       statusKeamanan = '⚠️ TERDETEKSI FAKE GPS';
     } else if (rooted) {
       statusKeamanan = '⚠️ TERDETEKSI HP ROOT';
@@ -472,9 +557,6 @@ export default function DashboardScreen({ user, onLogout }) {
     
     const deviceInfo = await getDeviceInfo();
     const submissionId = `${user?.email || 'user'}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    const finalGpsCoords = (photo?.coords && typeof photo.coords.latitude === 'number' && typeof photo.coords.longitude === 'number')
-      ? photo.coords
-      : currentCoords;
     
     const payload = {
         submissionId,
@@ -489,14 +571,14 @@ export default function DashboardScreen({ user, onLogout }) {
         kegiatan: (mode === 'hadir' || isWfh) ? form.kegiatan : "-",
         hasil_kegiatan: (mode === 'hadir' || isWfh) ? form.hasil : "-",
         izin_sakit: mode === 'izin' ? (isWfh ? "WFH" : `${form.kategoriIzin} - ${form.keteranganIzin}`) : "-",
-        gps: `${finalGpsCoords.latitude.toFixed(6)}, ${finalGpsCoords.longitude.toFixed(6)}`,
+        gps: `${resolvedCoords.latitude.toFixed(6)}, ${resolvedCoords.longitude.toFixed(6)}`,
         foto: photo?.base64 || "",
         device: deviceInfo,
         statusKeamanan: statusKeamanan
     };
 
     try {
-      // 1. Simpan ke antrean offline terlebih dahulu (Offline-First)
+      // 1. Simpan ke antrean offline terlebih dahulu (Offline-First, <500ms)
       const queueStr = await AsyncStorage.getItem('@offline_queue');
       const queue = queueStr ? JSON.parse(queueStr) : [];
       queue.push({ id: Date.now(), payload });
@@ -706,15 +788,33 @@ export default function DashboardScreen({ user, onLogout }) {
           </View>
         </Modal>
 
-        {/* GPS Info */}
-        <View style={[styles.gpsContainer, (isMocked || isRooted) && { borderColor: theme.error, borderWidth: 1.5 }]}>
-          <Ionicons name="location-sharp" size={18} color={(isMocked || isRooted) ? theme.error : (location ? theme.success : theme.error)} />
-          <Text style={{ fontSize: 12, color: (isMocked || isRooted) ? theme.error : theme.textSecondary, marginLeft: 6, fontWeight: (isMocked || isRooted) ? 'bold' : 'normal' }}>
-            {isRooted
-              ? '⚠️ HP Root Terdeteksi! Absensi diblokir.'
-              : isMocked
-              ? '⚠️ Terdeteksi Fake GPS! Matikan lokasi palsu.'
-              : (location ? `GPS Terkunci: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}` : 'Mencari sinyal GPS...')}
+        {/* Navitel GNSS Satellite Status Badge */}
+        <View style={[
+          styles.gpsContainer,
+          (isMocked || isRooted)
+            ? { borderColor: theme.error, borderWidth: 1.5, backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#fef2f2' }
+            : (location ? { borderColor: theme.success || '#10b981', borderWidth: 1 } : { borderColor: theme.border })
+        ]}>
+          <Ionicons
+            name={
+              (isMocked || isRooted)
+                ? 'warning-outline'
+                : (location ? 'navigate-circle-outline' : 'radio-outline')
+            }
+            size={18}
+            color={(isMocked || isRooted) ? theme.error : (location ? (theme.success || '#10b981') : (theme.textSecondary || '#6b7280'))}
+            style={{ marginRight: 6 }}
+          />
+          <Text
+            style={{
+              fontSize: 12,
+              color: (isMocked || isRooted) ? theme.error : (location ? (theme.text || '#1f2937') : (theme.textSecondary || '#6b7280')),
+              fontWeight: (isMocked || isRooted || location) ? '600' : 'normal',
+              flexShrink: 1,
+              textAlign: 'center'
+            }}
+          >
+            {formatGnssStatus({ isRooted, isMocked, location })}
           </Text>
         </View>
 
