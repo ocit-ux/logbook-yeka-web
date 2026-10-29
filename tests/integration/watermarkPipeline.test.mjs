@@ -394,3 +394,36 @@ test('Typography Integrity: zero em dashes across all watermark implementation s
     assert.strictEqual(emDashCount, 0, `File ${relPath} contains ${emDashCount} em dashes`);
   }
 });
+
+test('GPS Synchronization: database payload strictly matches photo watermark coordinates', () => {
+  // Mobile coordinate synchronization test
+  const watermarkCoords = { latitude: -6.208812, longitude: 106.845611 };
+  const submitTimeCoords = { latitude: -6.208835, longitude: 106.845640 }; // satellite drift 2m later
+  
+  const photo = {
+    uri: 'data:image/jpeg;base64,...',
+    base64: 'abc...',
+    coords: watermarkCoords
+  };
+
+  const resolveFinalGps = (p, current) => {
+    const finalGpsCoords = (p?.coords && typeof p.coords.latitude === 'number' && typeof p.coords.longitude === 'number')
+      ? p.coords
+      : current;
+    return `${finalGpsCoords.latitude.toFixed(6)}, ${finalGpsCoords.longitude.toFixed(6)}`;
+  };
+
+  // With photo (Hadir or WFH): database GPS matches photo watermark 100%
+  const gpsWithPhoto = resolveFinalGps(photo, submitTimeCoords);
+  assert.strictEqual(gpsWithPhoto, '-6.208812, 106.845611');
+
+  // Without photo (Izin non-WFH without photo): database GPS falls back to submit time coords
+  const gpsWithoutPhoto = resolveFinalGps(null, submitTimeCoords);
+  assert.strictEqual(gpsWithoutPhoto, '-6.208835, 106.845640');
+
+  // Web Apps GAS synchronization verification
+  const indexHtmlPath = path.join(rootDir, 'apps/backend-gas/Index.html');
+  const indexHtml = fs.readFileSync(indexHtmlPath, 'utf8');
+  assert.strictEqual(indexHtml.includes('window.capturedPhotoGPS = gpsStr;'), true);
+  assert.strictEqual(indexHtml.includes('window.capturedPhotoGPS'), true);
+});

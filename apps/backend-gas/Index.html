@@ -928,6 +928,7 @@
                         const gpsStr = (gpsVal && !gpsVal.includes('Mencari') && !gpsVal.includes('Beralih') && !gpsVal.includes('Belum')) 
                             ? gpsVal 
                             : (window.currentGPS || 'Belum Terkunci');
+                        window.capturedPhotoGPS = gpsStr;
                         applyCanvasWatermark(canvas, currentUser, gpsStr, window.currentWilayahText);
                     } catch (errWatermark) {
                         console.error('Gagal menerapkan watermark foto:', errWatermark);
@@ -947,6 +948,7 @@
 
         function resetPhoto() {
             capturedBase64Photo = "";
+            window.capturedPhotoGPS = "";
             document.getElementById('foto-input').value = "";
             if (document.getElementById('photo-preview')) document.getElementById('photo-preview').classList.add('hidden');
             if (document.getElementById('photo-placeholder')) document.getElementById('photo-placeholder').classList.remove('hidden');
@@ -1052,7 +1054,7 @@
                 kegiatan: isActiveHadir ? document.getElementById('absen-kegiatan').value : "-",
                 hasil_kegiatan: isActiveHadir ? document.getElementById('absen-hasil').value : "-",
                 izin_sakit: currentMode === 'izin' ? (document.getElementById('absen-kategori-izin').value + (document.getElementById('absen-izin').value.trim() && !isWfh ? " - " + document.getElementById('absen-izin').value.trim() : "")) : "-",
-                gps: gpsVal,
+                gps: (window.capturedPhotoGPS && !window.capturedPhotoGPS.includes('Belum')) ? window.capturedPhotoGPS : gpsVal,
                 foto: capturedBase64Photo || "",
                 device: parseUserAgentDetail()
             };

@@ -168,7 +168,11 @@ export default function WebCamera({ onCapture, onClose, theme, watermarkMeta }) 
     const base64Full = canvas.toDataURL('image/jpeg', 0.55);
     const cleanBase64 = base64Full.replace(/^data:image\/jpeg;base64,/, '');
     
-    onCapture({ uri: base64Full, base64: cleanBase64 });
+    onCapture({
+      uri: base64Full,
+      base64: cleanBase64,
+      coords: watermarkMeta?.location || null
+    });
   };
 
   if (hasPermission === false) {

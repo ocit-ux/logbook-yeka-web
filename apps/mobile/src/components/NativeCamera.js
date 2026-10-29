@@ -83,7 +83,10 @@ export default function NativeCamera({ onCapture, onClose, theme, watermarkMeta 
           finalResult = manipResult;
         }
 
-        onCapture(finalResult);
+        onCapture({
+          ...finalResult,
+          coords: watermarkMeta?.location || null
+        });
       } catch (e) {
         console.log(e);
         setIsProcessing(false);

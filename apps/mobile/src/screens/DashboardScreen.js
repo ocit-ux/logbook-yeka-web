@@ -472,6 +472,9 @@ export default function DashboardScreen({ user, onLogout }) {
     
     const deviceInfo = await getDeviceInfo();
     const submissionId = `${user?.email || 'user'}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const finalGpsCoords = (photo?.coords && typeof photo.coords.latitude === 'number' && typeof photo.coords.longitude === 'number')
+      ? photo.coords
+      : currentCoords;
     
     const payload = {
         submissionId,
@@ -486,7 +489,7 @@ export default function DashboardScreen({ user, onLogout }) {
         kegiatan: (mode === 'hadir' || isWfh) ? form.kegiatan : "-",
         hasil_kegiatan: (mode === 'hadir' || isWfh) ? form.hasil : "-",
         izin_sakit: mode === 'izin' ? (isWfh ? "WFH" : `${form.kategoriIzin} - ${form.keteranganIzin}`) : "-",
-        gps: `${currentCoords.latitude.toFixed(6)}, ${currentCoords.longitude.toFixed(6)}`,
+        gps: `${finalGpsCoords.latitude.toFixed(6)}, ${finalGpsCoords.longitude.toFixed(6)}`,
         foto: photo?.base64 || "",
         device: deviceInfo,
         statusKeamanan: statusKeamanan
@@ -763,7 +766,7 @@ export default function DashboardScreen({ user, onLogout }) {
               theme={theme}
               onClose={() => setShowCameraModal(false)}
               onCapture={(photoData) => {
-                setPhoto({ uri: photoData.uri, base64: photoData.base64 });
+                setPhoto({ uri: photoData.uri, base64: photoData.base64, coords: photoData.coords || null });
                 setShowCameraModal(false);
               }}
             />
