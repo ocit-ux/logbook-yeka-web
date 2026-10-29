@@ -5,6 +5,6 @@
     "apps/*"
   ],
   "scripts": {
-    "test": "node --test tests/backend/*.test.mjs tests/watermark/*.test.mjs tests/integration/*.test.mjs"
+    "test": "node --test tests/backend/*.test.mjs tests/watermark/*.test.mjs tests/integration/*.test.mjs tests/unit/*.test.mjs"
   }
 }
