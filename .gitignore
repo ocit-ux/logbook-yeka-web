@@ -5,3 +5,13 @@ apps/mobile/android/
 apps/mobile/ios/
 
 apps/mobile/dist/
+
+# Security & Secrets
+.env
+.env.*
+*.env
+**/.env
+**/.env.*
+
+# Temporary / Scratch
+.superpowers/
