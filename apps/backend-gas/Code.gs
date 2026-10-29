@@ -69,13 +69,41 @@ function doGet() {
 }
 
 function doPost(e) {
-  // Tangani request JSON dari React Native (Axios)
+  // Tangani request JSON dari React Native (Axios) atau Web
+  let postData = {};
+  if (e && e.postData && e.postData.contents) {
+    try {
+      postData = JSON.parse(e.postData.contents);
+    } catch (parseErr) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: 'error',
+        message: parseErr.message
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+  const action = postData.action || (e && e.parameter && e.parameter.action);
+
+  // Endpoint reverseGeocode tidak memerlukan lock sheet karena hanya mengakses cache atau Maps Geocoder
+  if (action === 'reverseGeocode') {
+    try {
+      const gpsStr = postData.gps || (postData.data && postData.data.gps) || (e && e.parameter && e.parameter.gps) || '';
+      const result = getWilayahCached_(gpsStr);
+      return ContentService.createTextOutput(JSON.stringify({
+        status: 'success',
+        data: result
+      })).setMimeType(ContentService.MimeType.JSON);
+    } catch (error) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: 'error',
+        message: error.message
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   
   try {
-    const postData = JSON.parse(e.postData.contents);
-    const action = postData.action;
     let result = {};
 
     switch(action) {
@@ -474,6 +502,53 @@ function getWilayahDariGPS_(gpsStr) {
   }
 }
 
+// Mengambil wilayah dengan cache ScriptCache (TTL 6 jam / 21600 detik) berbasis grid ~110m (3 desimal)
+function getWilayahCached_(gpsStr) {
+  const def = { desa: '-', kecamatan: '-', kabupaten: '-' };
+  if (!gpsStr || gpsStr === '-') return def;
+
+  try {
+    const parts = String(gpsStr).split(',');
+    if (parts.length < 2) return def;
+    const lat = parseFloat(parts[0].trim());
+    const lng = parseFloat(parts[1].trim());
+    if (isNaN(lat) || isNaN(lng)) return def;
+
+    const cacheKey = 'wil_v1_' + lat.toFixed(3) + '_' + lng.toFixed(3);
+    const cache = CacheService.getScriptCache();
+    if (cache) {
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    }
+
+    const res = getWilayahDariGPS_(gpsStr);
+    if (cache && res && (res.desa !== '-' || res.kecamatan !== '-' || res.kabupaten !== '-')) {
+      cache.put(cacheKey, JSON.stringify(res), 21600);
+    }
+    return res;
+  } catch (e) {
+    Logger.log('getWilayahCached_ error: ' + e.message);
+    return getWilayahDariGPS_(gpsStr);
+  }
+}
+
+// Dipanggil client Web App (google.script.run) untuk watermark foto
+function getWilayahClient(gpsStr) {
+  try {
+    const wil = getWilayahCached_(gpsStr);
+    if (!wil) return '';
+    const parts = [wil.desa, wil.kecamatan, wil.kabupaten].filter(function(p) {
+      return p && p !== '-';
+    });
+    return parts.length > 0 ? parts.join(', ') : '';
+  } catch (e) {
+    Logger.log('getWilayahClient error: ' + e.message);
+    return '';
+  }
+}
+
 // Jalankan manual dari editor Apps Script untuk mengisi Desa, Kecamatan, Kabupaten pada baris data lama
 function isiWilayahDataLama() {
   const startTime = Date.now();
@@ -559,6 +634,35 @@ function isiWilayahDataLama() {
   Logger.log('isiWilayahDataLama selesai. Baris berhasil dilengkapi: ' + updatedCount);
 }
 
+// Fungsi utilitas sekali klik untuk merapikan nama perangkat "Aplikasi Expo" lama pada Google Sheet
+function bersihkanNamaPerangkatLama() {
+  const sheet = getSheet_(SHEET_ABSENSI);
+  const dataRange = sheet.getDataRange();
+  const values = dataRange.getValues();
+  if (values.length < 2) return;
+  const headers = values[0];
+  let idxDev = -1;
+  headers.forEach((h, idx) => {
+    if (String(h).trim().toLowerCase() === 'device') idxDev = idx;
+  });
+  if (idxDev === -1) return;
+  let updatedCount = 0;
+  for (let i = 1; i < values.length; i++) {
+    const devStr = String(values[i][idxDev] || '');
+    if (/expo/i.test(devStr)) {
+      values[i][idxDev] = devStr
+        .replace(/Aplikasi Expo \(Mobile\)/gi, 'Aplikasi Mobile YEKA')
+        .replace(/Aplikasi Expo/gi, 'Aplikasi Mobile YEKA');
+      updatedCount++;
+    }
+  }
+  if (updatedCount > 0) {
+    dataRange.setValues(values);
+    SpreadsheetApp.flush();
+  }
+  Logger.log('bersihkanNamaPerangkatLama selesai. Diperbarui: ' + updatedCount + ' baris.');
+}
+
 // ==== SUBMIT ABSENSI ====
 function submitAttendance(data) {
   if (!data || !data.nama || !data.email) throw new Error('Data absensi tidak lengkap (nama/email kosong).');
@@ -625,7 +729,7 @@ function submitAttendance(data) {
   const fotoURL = simpanFotoKeDrive_(data.foto, namaFile);
 
   const statusKeamanan = String(data.statusKeamanan || 'AMAN (GPS Asli)').trim();
-  const wilayah = getWilayahDariGPS_(data.gps);
+  const wilayah = getWilayahCached_(data.gps);
 
   const rowBaru = [
     tgl, data.nama, data.email, data.telepon ? "'" + String(data.telepon).trim() : '-', data.jabatan, data.devisi,
