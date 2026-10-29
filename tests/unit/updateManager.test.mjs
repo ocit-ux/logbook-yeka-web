@@ -111,15 +111,15 @@ test('update-semua.js contract: wraps web export with baseUrl injection and fina
   );
 });
 
-test('update-semua.js contract: uses TOKEN_ANDROID for Android cloud updates', () => {
+test('update-semua.js contract: uses admin-yeka authorized token for Cloud Expo updates', () => {
   const scriptPath = path.join(rootDir, 'apps/mobile/update-semua.js');
   const content = fs.readFileSync(scriptPath, 'utf8');
 
-  // Verify TOKEN_ANDROID is passed to Android update commands
+  // Verify admin-yeka authorized token (TOKEN_IOS = admin-yeka) is passed to Cloud Expo update commands
   assert.match(
     content,
-    /EXPO_TOKEN:\s*TOKEN_ANDROID/,
-    'update-semua.js must use TOKEN_ANDROID for Android EAS uploads'
+    /EXPO_TOKEN:\s*EXPO_TOKEN_ADMIN_YEKA/,
+    'update-semua.js must use EXPO_TOKEN_ADMIN_YEKA for admin-yeka EAS uploads'
   );
 });
 

@@ -134,6 +134,11 @@ function runUpdate() {
     process.exit(1);
   }
 
+  // Project @admin-yeka/syncin-yeka (0435be94-6cd0-4d8b-acac-865ae059b930) dimiliki oleh akun admin-yeka.
+  // TOKEN_IOS di .env adalah token admin-yeka (sekretariat.yeka@gmail.com).
+  // TOKEN_ANDROID di .env adalah token rosyid99 (rosyidgo99@gmail.com).
+  const EXPO_TOKEN_ADMIN_YEKA = TOKEN_IOS || TOKEN_ANDROID;
+
   const easCmd = resolveEasCommand(__dirname, process.platform);
   const expoExportCmd = resolveExpoExportCommand(__dirname, process.platform);
 
@@ -161,14 +166,14 @@ function runUpdate() {
     console.log("==> Mengunggah ke Cloud Expo (Preview)...");
     execSync(`${easCmd} update --branch preview --message "${msg}" --environment preview`, {
       cwd: __dirname,
-      env: { ...process.env, EXPO_TOKEN: TOKEN_ANDROID, CI: '1' },
+      env: { ...process.env, EXPO_TOKEN: EXPO_TOKEN_ADMIN_YEKA, CI: '1' },
       stdio: 'inherit'
     });
 
     console.log("==> Mengunggah ke Cloud Expo (Production)...");
     execSync(`${easCmd} update --branch production --message "${msg}" --environment production`, {
       cwd: __dirname,
-      env: { ...process.env, EXPO_TOKEN: TOKEN_ANDROID, CI: '1' },
+      env: { ...process.env, EXPO_TOKEN: EXPO_TOKEN_ADMIN_YEKA, CI: '1' },
       stdio: 'inherit'
     });
 
