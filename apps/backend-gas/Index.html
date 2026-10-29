@@ -797,14 +797,14 @@
             setAttendanceMode(currentMode);
         }
 
-                function formatIndexWatermark(user, gpsStr, wilayah, dateInput) {
+        function formatIndexWatermark(user, gpsStr, wilayah, dateInput) {
             const d = (dateInput instanceof Date) ? dateInput : (dateInput ? new Date(dateInput) : new Date());
             const dStr = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
             const tStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':');
             const cleanGps = gpsStr ? (gpsStr.startsWith('GPS:') ? gpsStr : ('GPS: ' + gpsStr)) : 'GPS: Belum Terkunci';
             return {
                 header: 'YAYASAN ELANG KATULISTIWA ADIPAVITRA',
-                staff: `${user?.nama || 'Staf Lapangan'} | ${user?.devisi || user?.jabatan || 'Staff'}`,
+                staff: `${user?.nama || 'Staf Lapangan'} | ${(user?.devisi && user.devisi !== '-') ? user.devisi : ((user?.jabatan && user.jabatan !== '-') ? user.jabatan : 'Staff')}`,
                 time: `${dStr} | ${tStr} WIB`,
                 location: cleanGps,
                 wilayah: wilayah || ''
@@ -979,13 +979,13 @@
                                 const lat = position.coords.latitude;
                                 const lng = position.coords.longitude;
                                 const gpsCoord = lat.toFixed(6) + ', ' + lng.toFixed(6);
-                        document.getElementById('absen-gps').value = gpsCoord;
-                        window.currentGPS = gpsCoord;
-                        if (typeof google !== 'undefined' && google.script && google.script.run) {
-                            google.script.run.withSuccessHandler(function(w) {
-                                window.currentWilayahText = w;
-                            }).getWilayahClient(lat + ',' + lng);
-                        }
+                                document.getElementById('absen-gps').value = gpsCoord;
+                                window.currentGPS = gpsCoord;
+                                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                                    google.script.run.withSuccessHandler(function(w) {
+                                        window.currentWilayahText = w;
+                                    }).getWilayahClient(lat + ',' + lng);
+                                }
                             },
                             (errLow) => {
                                 let pesan = "GPS tidak dapat diakses.";

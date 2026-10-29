@@ -265,7 +265,7 @@ export function measureText(text, scale = 1, maxWidth = 0, lineSpacing = DEFAULT
  * Draws a single 5x7 glyph into an RGBA buffer with clipping and alpha compositing.
  */
 function drawGlyph(buffer, width, height, glyphIndex, cursorX, cursorY, scale, color) {
-  const [r, g, b, a] = color;
+  const [r, g, b, a = 255] = color;
   if (a <= 0) return;
 
   const fontOffset = glyphIndex * GLYPH_WIDTH;

@@ -39,7 +39,7 @@ export function base64ToUint8Array(b64) {
   if (sanitized[len - 1] === '=') placeHolders++;
   if (sanitized[len - 2] === '=') placeHolders++;
 
-  const byteLen = Math.floor((len * 3) / 4) - placeHolders;
+  const byteLen = Math.max(0, Math.floor((len * 3) / 4) - placeHolders);
   const bytes = new Uint8Array(byteLen);
 
   let cur = 0;
