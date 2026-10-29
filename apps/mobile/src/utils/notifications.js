@@ -26,7 +26,7 @@ export async function registerForPushNotificationsAsync() {
     });
   }
 
-  if (!Device.isDevice) return false; // emulator — tidak bisa request izin notif
+  if (!Device.isDevice) return false; // emulator - tidak bisa request izin notif
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;

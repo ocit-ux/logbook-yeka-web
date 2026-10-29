@@ -13,7 +13,7 @@ set EXPO_TOKEN_IOS=vb_vPYzPpvTllVzzFmQ2ZjGkKgevkI58XTDazbJu
 
 REM Ambil pesan update dari input, atau gunakan default
 set "pesan=%~1"
-if "%pesan%"=="" set "pesan=Update Akurasi GPS & Anti-Duplikat"
+if "%pesan%"=="" set "pesan=Fix anti-blank photo camera & Update Wilayah GPS"
 
 node update-semua.js "%pesan%"
 

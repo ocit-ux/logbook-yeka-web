@@ -40,7 +40,7 @@ export const getDeviceInfo = async () => {
       return `${model} [ID: ${shortId}]`;
     }
   } catch (e) {
-    return Platform.OS === 'web' ? "Web App" : "Aplikasi Expo";
+    return Platform.OS === 'web' ? "Web App YEKA" : "Aplikasi Mobile YEKA";
   }
 };
 

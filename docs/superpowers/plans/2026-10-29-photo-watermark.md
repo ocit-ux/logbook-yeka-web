@@ -14,7 +14,7 @@
 
 - Android OTA Compatibility: Zero new native React Native modules or pod/gradle dependencies; existing `runtimeVersion` `1.0.0` must remain valid for `eas update`.
 - Anti-Blank Integrity: Camera black-frame detection must always execute before watermark application so pitch-black frames cannot pass validation due to watermark pixels.
-- Typography & Anti-Slop: No em dashes (`—`) permitted anywhere in UI or watermark copy; use `|`, `:`, `,`, or `-`.
+- Typography & Anti-Slop: No em dashes (Unicode \u2014) permitted anywhere in UI or watermark copy; use `|`, `:`, `,`, or `-`.
 - Photo Dimension Limits: Maximum output width 1000px on mobile (`NativeCamera.js`, `WebCamera.js`) and 1024px on GAS (`Index.html`).
 - Offline Resilience: Offline field captures must never fail; if reverse-geocoded wilayah is unavailable, the banner displays exact GPS coordinates and capture time without breaking.
 
@@ -201,7 +201,7 @@ test('formatWatermarkLines constructs four lines without em dashes', () => {
   assert.match(lines.timestamp, /WIB$/);
   assert.strictEqual(lines.location, 'GPS: -6.208800, 106.845600');
   assert.strictEqual(lines.wilayah, 'Desa Sukamaju, Kec. Ciawi, Kab. Bogor');
-  assert.strictEqual(JSON.stringify(lines).includes('—'), false);
+  assert.strictEqual(JSON.stringify(lines).includes('\u2014'), false);
 });
 
 test('ensureHermesBufferShim provides Buffer.from and Buffer.alloc', () => {
