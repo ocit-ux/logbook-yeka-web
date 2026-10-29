@@ -65,3 +65,4 @@ test('Typography Integrity: zero em dashes across watermarkSync test file', () =
   const currentFileContent = fs.readFileSync(__filename, 'utf8');
   assert.strictEqual(currentFileContent.includes('\u2014'), false, 'watermarkSync.test.mjs must contain zero em dashes');
 });
+

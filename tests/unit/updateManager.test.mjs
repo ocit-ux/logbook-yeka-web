@@ -8,6 +8,29 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '../..');
 
+test('App.json configuration contract: checkAutomatically NEVER to prevent SQLite database lock crash', () => {
+  const appJsonPath = path.join(rootDir, 'apps/mobile/app.json');
+  const appConfig = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'));
+
+  assert.strictEqual(
+    appConfig.expo?.updates?.checkAutomatically,
+    'NEVER',
+    'app.json must set checkAutomatically to NEVER to eliminate native splash loader vs JS SQLite lock race'
+  );
+});
+
+test('update-semua.js contract: uses TOKEN_ANDROID for Android cloud updates', () => {
+  const scriptPath = path.join(rootDir, 'apps/mobile/update-semua.js');
+  const content = fs.readFileSync(scriptPath, 'utf8');
+
+  // Verify TOKEN_ANDROID is passed to Android update commands
+  assert.match(
+    content,
+    /EXPO_TOKEN:\s*TOKEN_ANDROID/,
+    'update-semua.js must use TOKEN_ANDROID for Android EAS uploads'
+  );
+});
+
 test('App.js source code integration contract: safe enterprise auto-update without unannounced reload', () => {
   const appJsPath = path.join(rootDir, 'apps/mobile/App.js');
   const content = fs.readFileSync(appJsPath, 'utf8');
@@ -38,14 +61,21 @@ test('App.js source code integration contract: safe enterprise auto-update witho
   assert.strictEqual(content.includes('isRestarting'), true, 'App.js must track isRestarting state');
   assert.strictEqual(content.includes('Memulai Ulang Sistem'), true, 'App.js must render Memulai Ulang Sistem enterprise screen');
 
-  // 6. Zero emojis in update banner and restart screen
+  // 6. Must unmount active screens during isRestarting to teardown location watchers and camera
+  assert.match(
+    content,
+    /isRestarting\s*\?\s*\(/,
+    'App.js must unmount active screens during isRestarting to trigger native listener cleanup'
+  );
+
+  // 7. Zero emojis in update banner and restart screen
   assert.strictEqual(
     /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/u.test(content),
     false,
     'App.js must contain zero emojis'
   );
 
-  // 7. Zero em dashes
+  // 8. Zero em dashes
   assert.strictEqual(content.includes('\u2014'), false, 'App.js must contain zero em dashes');
 });
 

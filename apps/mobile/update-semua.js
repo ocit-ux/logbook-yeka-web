@@ -138,14 +138,14 @@ function runUpdate() {
     console.log("==> Mengunggah ke Cloud Expo (Preview)...");
     execSync(`${easCmd} update --branch preview --message "${msg}" --environment preview`, {
       cwd: __dirname,
-      env: { ...process.env, EXPO_TOKEN: TOKEN_IOS, CI: '1' },
+      env: { ...process.env, EXPO_TOKEN: TOKEN_ANDROID, CI: '1' },
       stdio: 'inherit'
     });
 
     console.log("==> Mengunggah ke Cloud Expo (Production)...");
     execSync(`${easCmd} update --branch production --message "${msg}" --environment production`, {
       cwd: __dirname,
-      env: { ...process.env, EXPO_TOKEN: TOKEN_IOS, CI: '1' },
+      env: { ...process.env, EXPO_TOKEN: TOKEN_ANDROID, CI: '1' },
       stdio: 'inherit'
     });
 

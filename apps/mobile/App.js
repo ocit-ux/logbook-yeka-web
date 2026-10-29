@@ -109,20 +109,12 @@ function MainApp() {
     };
 
     checkAutoUpdate();
-    // Polling live di latar belakang tiap 30 detik saat aplikasi tetap menyala
-    const liveUpdateInterval = setInterval(() => {
-      if (AppState.currentState === 'active') {
-        checkAutoUpdate();
-      }
-    }, 30000);
-
     const appStateSub = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active') checkAutoUpdate();
     });
     const notifSub = setupNotificationReceivedListener();
 
     return () => {
-      clearInterval(liveUpdateInterval);
       appStateSub?.remove?.();
       notifSub?.remove?.();
     };
@@ -254,7 +246,24 @@ function MainApp() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar style={isDark ? "light" : "dark"} />
-      {!user ? (
+      {isRestarting ? (
+        <View style={styles.enterpriseRestartOverlay}>
+          <View style={styles.enterpriseRestartBox}>
+            <View style={styles.restartIconPulse}>
+              <Ionicons name="sync-circle-outline" size={68} color="#d4af37" />
+            </View>
+            <Text style={styles.restartTitle}>Memulai Ulang Sistem</Text>
+            <Text style={styles.restartSubtitle}>
+              Pembaruan aplikasi telah siap. Menyinkronkan komponen dan memuat ulang antarmuka...
+            </Text>
+            <View style={styles.restartProgressBox}>
+              <ActivityIndicator size="small" color="#d4af37" />
+              <Text style={styles.restartProgressText}>Memuat versi terbaru...</Text>
+            </View>
+            <Text style={styles.restartFooter}>Yayasan Elang Katulistiwa Adipavitra</Text>
+          </View>
+        </View>
+      ) : !user ? (
         <LoginScreen onLoginSuccess={async (u) => {
           setUser(u);
           syncPushTokenToServer(u);
@@ -341,24 +350,7 @@ function MainApp() {
         </View>
       )}
 
-      {isRestarting && (
-        <View style={styles.enterpriseRestartOverlay}>
-          <View style={styles.enterpriseRestartBox}>
-            <View style={styles.restartIconPulse}>
-              <Ionicons name="sync-circle-outline" size={68} color="#d4af37" />
-            </View>
-            <Text style={styles.restartTitle}>Memulai Ulang Sistem</Text>
-            <Text style={styles.restartSubtitle}>
-              Pembaruan aplikasi telah siap. Menyinkronkan komponen dan memuat ulang antarmuka...
-            </Text>
-            <View style={styles.restartProgressBox}>
-              <ActivityIndicator size="small" color="#d4af37" />
-              <Text style={styles.restartProgressText}>Memuat versi terbaru...</Text>
-            </View>
-            <Text style={styles.restartFooter}>Yayasan Elang Katulistiwa Adipavitra</Text>
-          </View>
-        </View>
-      )}
+
     </SafeAreaView>
   );
 }
