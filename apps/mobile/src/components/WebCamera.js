@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { stampWatermarkCanvas } from '../utils/watermark';
 
-export default function WebCamera({ onCapture, onClose, theme }) {
+export default function WebCamera({ onCapture, onClose, theme, watermarkMeta }) {
   if (Platform.OS !== 'web') return null;
 
   const videoRef = useRef(null);
@@ -153,8 +154,18 @@ export default function WebCamera({ onCapture, onClose, theme }) {
       }
     } catch (e) {}
     
-    // Kompresi (0.4) agar cepat di-upload tapi tetap jernih
-    const base64Full = canvas.toDataURL('image/jpeg', 0.4);
+
+    // Bubuhkan geo-timestamp watermark jika watermarkMeta tersedia
+    if (watermarkMeta) {
+      try {
+        stampWatermarkCanvas(canvas, watermarkMeta);
+      } catch (e) {
+        console.warn('Gagal membubuhkan watermark canvas:', e);
+      }
+    }
+
+    // Kompresi (0.55) agar tajam dan lolos audit inspeksi
+    const base64Full = canvas.toDataURL('image/jpeg', 0.55);
     const cleanBase64 = base64Full.replace(/^data:image\/jpeg;base64,/, '');
     
     onCapture({ uri: base64Full, base64: cleanBase64 });

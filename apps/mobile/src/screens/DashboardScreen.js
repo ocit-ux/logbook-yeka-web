@@ -94,6 +94,7 @@ const JSWheelPicker = ({ items, selectedValue, onValueChange, theme }) => {
 export default function DashboardScreen({ user, onLogout }) {
   const { theme, isDark } = useTheme();
   const [location, setLocation] = useState(null);
+  const [wilayah, setWilayah] = useState('');
   const [isMocked, setIsMocked] = useState(false);
   const [isRooted, setIsRooted] = useState(false);
   const [photo, setPhoto] = useState(null);
@@ -689,6 +690,7 @@ export default function DashboardScreen({ user, onLogout }) {
         <Modal visible={showCameraModal} animationType="slide" onRequestClose={() => setShowCameraModal(false)}>
           {Platform.OS === 'web' ? (
             <WebCamera 
+              watermarkMeta={{ user, location, wilayah }}
               theme={theme}
               onClose={() => setShowCameraModal(false)}
               onCapture={(photoData) => {
