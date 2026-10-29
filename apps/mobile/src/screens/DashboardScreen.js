@@ -15,6 +15,7 @@ import { getDeviceInfo, isMockedLocation, isDeviceRooted } from '../utils/device
 import { selectSubmissionCoords, formatGnssStatus, formatAccuracy, isValidCoords } from '../utils/gnss';
 import WebCamera from '../components/WebCamera';
 import NativeCamera from '../components/NativeCamera';
+import { stampWatermarkNativeAsync } from '../utils/watermark';
 
 export { selectSubmissionCoords };
 
@@ -555,6 +556,26 @@ export default function DashboardScreen({ user, onLogout }) {
     
     const isWfh = mode === 'izin' && form.kategoriIzin === 'WFH';
     
+    // Auto Re-stamp: jika foto diambil saat GPS belum terkunci namun saat submit koordinat sudah valid
+    let finalPhotoBase64 = photo?.base64 || "";
+    if (photo && photo.base64 && (!photo.coords || !isValidCoords(photo.coords)) && isValidCoords(resolvedCoords)) {
+      try {
+        const restampMeta = {
+          user,
+          location: resolvedCoords,
+          coords: resolvedCoords,
+          wilayah: wilayah || ''
+        };
+        const restamped = await stampWatermarkNativeAsync(photo.base64, restampMeta);
+        if (restamped && restamped.base64) {
+          finalPhotoBase64 = restamped.base64;
+          photo.coords = resolvedCoords;
+        }
+      } catch (restampErr) {
+        console.warn('Gagal memperbarui watermark foto dengan GPS terkunci:', restampErr);
+      }
+    }
+
     const deviceInfo = await getDeviceInfo();
     const submissionId = `${user?.email || 'user'}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     
@@ -572,7 +593,7 @@ export default function DashboardScreen({ user, onLogout }) {
         hasil_kegiatan: (mode === 'hadir' || isWfh) ? form.hasil : "-",
         izin_sakit: mode === 'izin' ? (isWfh ? "WFH" : `${form.kategoriIzin} - ${form.keteranganIzin}`) : "-",
         gps: `${resolvedCoords.latitude.toFixed(6)}, ${resolvedCoords.longitude.toFixed(6)}`,
-        foto: photo?.base64 || "",
+        foto: finalPhotoBase64,
         device: deviceInfo,
         statusKeamanan: statusKeamanan
     };

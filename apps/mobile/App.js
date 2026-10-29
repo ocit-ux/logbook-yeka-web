@@ -88,6 +88,7 @@ function MainApp() {
   const lastUpdateCheckRef = useRef(0);
   const [updateReady, setUpdateReady] = useState(false);
   const [isApplyingUpdate, setIsApplyingUpdate] = useState(false);
+  const [isRestarting, setIsRestarting] = useState(false);
 
   useEffect(() => {
     const checkAutoUpdate = async () => {
@@ -128,16 +129,20 @@ function MainApp() {
   }, []);
 
   const handleApplyUpdate = async () => {
-    if (isApplyingUpdate) return;
+    if (isApplyingUpdate || isRestarting) return;
     setIsApplyingUpdate(true);
-    // Beri jeda 300ms agar event loop native dan UI selesai dengan rapi sebelum reload
+    setIsRestarting(true);
+    setUpdateReady(false);
+
+    // Berikan jeda 800ms agar layar enterprise transition tampil mulus dan bridge native membersihkan listener
     setTimeout(async () => {
       try {
         await Updates.reloadAsync();
       } catch (e) {
         setIsApplyingUpdate(false);
+        setIsRestarting(false);
       }
-    }, 300);
+    }, 800);
   };
 
   const syncPushTokenToServer = async (targetUser) => {
@@ -335,6 +340,25 @@ function MainApp() {
           </View>
         </View>
       )}
+
+      {isRestarting && (
+        <View style={styles.enterpriseRestartOverlay}>
+          <View style={styles.enterpriseRestartBox}>
+            <View style={styles.restartIconPulse}>
+              <Ionicons name="sync-circle-outline" size={68} color="#d4af37" />
+            </View>
+            <Text style={styles.restartTitle}>Memulai Ulang Sistem</Text>
+            <Text style={styles.restartSubtitle}>
+              Pembaruan aplikasi telah siap. Menyinkronkan komponen dan memuat ulang antarmuka...
+            </Text>
+            <View style={styles.restartProgressBox}>
+              <ActivityIndicator size="small" color="#d4af37" />
+              <Text style={styles.restartProgressText}>Memuat versi terbaru...</Text>
+            </View>
+            <Text style={styles.restartFooter}>Yayasan Elang Katulistiwa Adipavitra</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -473,5 +497,77 @@ const getStyles = (theme, insets) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  enterpriseRestartOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 99999,
+    backgroundColor: 'rgba(11, 33, 25, 0.98)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  enterpriseRestartBox: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#12382c',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#d4af37',
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  restartIconPulse: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(212, 175, 55, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  restartTitle: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  restartSubtitle: {
+    color: '#cbd5e1',
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  restartProgressBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 16,
+  },
+  restartProgressText: {
+    color: '#d4af37',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  restartFooter: {
+    color: 'rgba(236, 253, 245, 0.6)',
+    fontSize: 10,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   }
 });

@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, 
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImageManipulator from 'expo-image-manipulator';
+import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { stampWatermarkNativeAsync } from '../utils/watermark';
 
@@ -73,8 +75,37 @@ export default function NativeCamera({ onCapture, onClose, theme, watermarkMeta 
           return;
         }
 
+        // Fast pre-capture GPS lookup jika koordinat saat kamera dibuka masih null
+        let activeLocation = watermarkMeta?.location;
+        if (!activeLocation) {
+          try {
+            const rawCached = await AsyncStorage.getItem('@last_known_location');
+            if (rawCached) {
+              const parsed = JSON.parse(rawCached);
+              if (parsed && (Date.now() - (parsed.timestamp || 0) < 300000)) {
+                activeLocation = parsed;
+              }
+            }
+          } catch (e) {}
+        }
+        if (!activeLocation) {
+          try {
+            const lastKnown = await Location.getLastKnownPositionAsync();
+            if (lastKnown && lastKnown.coords) {
+              activeLocation = { ...lastKnown.coords, timestamp: Date.now() };
+            }
+          } catch (e) {}
+        }
+
+        const effectiveMeta = {
+          ...watermarkMeta,
+          location: activeLocation || watermarkMeta?.location,
+          coords: activeLocation || watermarkMeta?.coords
+        };
+
         let finalResult = manipResult;
         try {
+          if (effectiveMeta) { watermarkMeta = effectiveMeta; }
           if (watermarkMeta) {
             finalResult = await stampWatermarkNativeAsync(manipResult.base64, watermarkMeta);
           }

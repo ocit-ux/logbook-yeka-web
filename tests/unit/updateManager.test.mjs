@@ -34,14 +34,18 @@ test('App.js source code integration contract: safe enterprise auto-update witho
   // 4. Must support dismiss/nanti action for seamless next-launch activation
   assert.strictEqual(content.includes('setUpdateReady(false)'), true, 'Must allow dismissing banner');
 
-  // 5. Zero emojis in update banner
+  // 5. Must provide enterprise restarting sequence overlay (no abrupt black screen / force close)
+  assert.strictEqual(content.includes('isRestarting'), true, 'App.js must track isRestarting state');
+  assert.strictEqual(content.includes('Memulai Ulang Sistem'), true, 'App.js must render Memulai Ulang Sistem enterprise screen');
+
+  // 6. Zero emojis in update banner and restart screen
   assert.strictEqual(
     /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/u.test(content),
     false,
     'App.js must contain zero emojis'
   );
 
-  // 6. Zero em dashes
+  // 7. Zero em dashes
   assert.strictEqual(content.includes('\u2014'), false, 'App.js must contain zero em dashes');
 });
 

@@ -899,6 +899,8 @@
             if (!file) return;
             const reader = new FileReader();
             reader.onload = function (e) {
+                // Simpan raw source foto agar dapat di-restamp otomatis dengan GPS terkunci
+                window.rawCapturedImageSource = e.target.result;
                 // kompres dulu lewat canvas biar ukuran base64 gak kegedean buat dikirim ke Apps Script
                 const img = new Image();
                 img.onload = function () {
@@ -1036,6 +1038,33 @@
             if (!gpsVal || gpsVal.startsWith('⚠️') || gpsVal.startsWith('Mencari')) {
                 alert('Kunci lokasi GPS terlebih dahulu sebelum mengirim absensi.');
                 return;
+            }
+
+            // Auto Re-stamp jika foto dipotret saat GPS belum terkunci namun saat submit GPS sudah terkunci
+            const currentGpsClean = (window.currentGPS || gpsVal || '').trim();
+            if (window.rawCapturedImageSource && currentGpsClean && (!window.capturedPhotoGPS || window.capturedPhotoGPS.includes('Belum') || window.capturedPhotoGPS !== currentGpsClean)) {
+                try {
+                    await new Promise((resolve) => {
+                        const reImg = new Image();
+                        reImg.onload = function() {
+                            const maxW = 1024;
+                            const scale = Math.min(1, maxW / reImg.width);
+                            const canvas = document.createElement('canvas');
+                            canvas.width = reImg.width * scale;
+                            canvas.height = reImg.height * scale;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(reImg, 0, 0, canvas.width, canvas.height);
+                            applyCanvasWatermark(canvas, currentUser, currentGpsClean, window.currentWilayahText);
+                            capturedBase64Photo = canvas.toDataURL('image/jpeg', 0.7);
+                            window.capturedPhotoGPS = currentGpsClean;
+                            resolve();
+                        };
+                        reImg.onerror = () => resolve();
+                        reImg.src = window.rawCapturedImageSource;
+                    });
+                } catch (reErr) {
+                    console.warn('Gagal re-stamp foto di Index.html:', reErr);
+                }
             }
 
             const btn = document.getElementById('btn-submit-jurnal');
