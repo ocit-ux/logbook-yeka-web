@@ -40,7 +40,7 @@ function deployWebDirect(baseDir = __dirname, customMsg = '') {
   }
 
   const repoUrl = token
-    ? `https://${token}@github.com/ocit-ux/logbook-yeka-web.git`
+    ? `https://x-access-token:${token}@github.com/ocit-ux/logbook-yeka-web.git`
     : 'https://github.com/ocit-ux/logbook-yeka-web.git';
 
   const msg = customMsg || 'Updates: Enterprise UI and GPS enhancements';
@@ -49,6 +49,9 @@ function deployWebDirect(baseDir = __dirname, customMsg = '') {
   execSync('git init', { cwd: distDir, stdio: 'ignore' });
   execSync('git config user.name "ocit-ux"', { cwd: distDir, stdio: 'ignore' });
   execSync('git config user.email "76835306+ocit-ux@users.noreply.github.com"', { cwd: distDir, stdio: 'ignore' });
+  if (token) {
+    execSync('git config credential.helper ""', { cwd: distDir, stdio: 'ignore' });
+  }
   execSync(`git remote add origin ${repoUrl}`, { cwd: distDir, stdio: 'ignore' });
   execSync('git checkout -B main', { cwd: distDir, stdio: 'ignore' });
   execSync('git add -A', { cwd: distDir, stdio: 'ignore' });
@@ -58,7 +61,10 @@ function deployWebDirect(baseDir = __dirname, customMsg = '') {
   } catch (_) {}
 
   console.log('==> Mengunggah langsung ke GitHub Pages (branch main)...');
-  execSync('git push -u origin main --force', { cwd: distDir, stdio: 'inherit' });
+  const pushCmd = token
+    ? 'git -c credential.helper= push -u origin main --force'
+    : 'git push -u origin main --force';
+  execSync(pushCmd, { cwd: distDir, stdio: 'inherit' });
   console.log('[SUKSES] Web App iOS berhasil dipublikasikan ke GitHub Pages!');
 }
 
