@@ -5,11 +5,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../utils/theme';
 import { API_URL } from '../utils/api';
 import { showAlert } from '../utils/alert';
+import { getBrandLogoSource } from '../utils/brandLogo';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen({ onLoginSuccess }) {
   const { theme, isDark } = useTheme();
+  const [logoError, setLogoError] = useState(false);
   const [mode, setMode] = useState('login'); // login | register | forgot
   const [employeeId, setEmployeeId] = useState('');
   const [pin, setPin] = useState('');
@@ -142,7 +144,14 @@ export default function LoginScreen({ onLoginSuccess }) {
           <View style={{ flex: 1, minHeight: 40 }} />
           <View style={styles.boxLogin}>
             <View style={styles.logoContainer}>
-          <Image source={require('../../assets/logo.png')} style={{ width: 80, height: 80, marginBottom: 10 }} resizeMode="contain" />
+          <View style={styles.haloWrapper}>
+            <Image 
+              source={getBrandLogoSource(logoError)} 
+              style={styles.logoImage} 
+              resizeMode="contain" 
+              onError={() => setLogoError(true)}
+            />
+          </View>
           <Text style={styles.appTitle}>Yayasan Elang Katulistiwa Adipavitra</Text>
           <Text style={styles.appSubtitle}>SISTEM JURNAL CLOUD</Text>
         </View>
@@ -271,6 +280,26 @@ const getStyles = (theme) => StyleSheet.create({
     alignItems: 'center',
     marginBottom: 30,
   },
+  haloWrapper: {
+    width: 94,
+    height: 94,
+    borderRadius: 47,
+    backgroundColor: 'rgba(212, 175, 55, 0.12)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(212, 175, 55, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  logoImage: {
+    width: 76,
+    height: 76,
+  },
   appTitle: {
     fontSize: 22,
     fontWeight: 'bold',
@@ -279,10 +308,13 @@ const getStyles = (theme) => StyleSheet.create({
     textAlign: 'center',
   },
   appSubtitle: {
-    fontSize: 12,
-    color: theme.textSecondary,
+    fontSize: 11,
+    color: '#d4af37',
     marginTop: 4,
-    textAlign: 'center'
+    textAlign: 'center',
+    fontWeight: '600',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   inputGroup: {
     marginBottom: 20,

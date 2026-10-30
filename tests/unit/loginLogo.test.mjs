@@ -88,6 +88,97 @@ test('brandLogo.js source code compliance: zero em dashes and exact require path
   );
 });
 
+test('LoginScreen.js imports getBrandLogoSource and implements logo error state', () => {
+  const filePath = path.join(rootDir, 'apps/mobile/src/screens/LoginScreen.js');
+  assert.strictEqual(fs.existsSync(filePath), true, 'LoginScreen.js must exist');
+
+  const content = fs.readFileSync(filePath, 'utf8');
+
+  // Rule R-02
+  assert.strictEqual(content.includes('\u2014'), false, 'LoginScreen.js must contain zero em dashes');
+
+  // Import getBrandLogoSource
+  assert.ok(
+    content.includes("import { getBrandLogoSource } from '../utils/brandLogo';") ||
+    content.includes('import { getBrandLogoSource } from "../utils/brandLogo";'),
+    'LoginScreen.js must import getBrandLogoSource from ../utils/brandLogo'
+  );
+
+  // logoError state
+  assert.ok(
+    content.includes('const [logoError, setLogoError] = useState(false);'),
+    'LoginScreen.js must declare logoError state with useState(false)'
+  );
+});
+
+test('LoginScreen.js renders Option B Executive Gold Halo structure with error handler', () => {
+  const filePath = path.join(rootDir, 'apps/mobile/src/screens/LoginScreen.js');
+  const content = fs.readFileSync(filePath, 'utf8');
+
+  // Verify haloWrapper wraps logoImage and handles onError
+  assert.ok(
+    content.includes('styles.haloWrapper'),
+    'LoginScreen.js must render element with styles.haloWrapper'
+  );
+  assert.ok(
+    content.includes('source={getBrandLogoSource(logoError)}'),
+    'LoginScreen.js Image source must use getBrandLogoSource(logoError)'
+  );
+  assert.ok(
+    content.includes('style={styles.logoImage}'),
+    'LoginScreen.js Image must use styles.logoImage'
+  );
+  assert.ok(
+    content.includes('onError={() => setLogoError(true)}'),
+    'LoginScreen.js Image must have onError handler setting logoError to true'
+  );
+  assert.ok(
+    content.includes('resizeMode="contain"'),
+    'LoginScreen.js Image must have resizeMode="contain"'
+  );
+});
+
+test('LoginScreen.js defines Executive Gold Halo and subtitle styling contracts', () => {
+  const filePath = path.join(rootDir, 'apps/mobile/src/screens/LoginScreen.js');
+  const content = fs.readFileSync(filePath, 'utf8');
+
+  // haloWrapper styles
+  assert.ok(content.includes('width: 94'), 'haloWrapper must have width: 94');
+  assert.ok(content.includes('height: 94'), 'haloWrapper must have height: 94');
+  assert.ok(content.includes('borderRadius: 47'), 'haloWrapper must have borderRadius: 47');
+  assert.ok(
+    content.includes("backgroundColor: 'rgba(212, 175, 55, 0.12)'") ||
+    content.includes('backgroundColor: "rgba(212, 175, 55, 0.12)"'),
+    'haloWrapper must have golden translucent background'
+  );
+  assert.ok(content.includes('borderWidth: 1.5'), 'haloWrapper must have borderWidth: 1.5');
+  assert.ok(
+    content.includes("borderColor: 'rgba(212, 175, 55, 0.45)'") ||
+    content.includes('borderColor: "rgba(212, 175, 55, 0.45)"'),
+    'haloWrapper must have golden border'
+  );
+  assert.ok(content.includes('marginBottom: 14'), 'haloWrapper must have marginBottom: 14');
+  assert.ok(content.includes('shadowOpacity: 0.35'), 'haloWrapper must have shadowOpacity: 0.35');
+  assert.ok(content.includes('shadowRadius: 10'), 'haloWrapper must have shadowRadius: 10');
+  assert.ok(content.includes('elevation: 8'), 'haloWrapper must have elevation: 8');
+
+  // logoImage styles
+  assert.ok(content.includes('width: 76'), 'logoImage must have width: 76');
+  assert.ok(content.includes('height: 76'), 'logoImage must have height: 76');
+
+  // appSubtitle gold styles
+  assert.ok(content.includes('fontSize: 11'), 'appSubtitle must have fontSize: 11');
+  assert.ok(
+    content.includes("color: '#d4af37'") || content.includes('color: "#d4af37"'),
+    'appSubtitle must have executive gold color #d4af37'
+  );
+  assert.ok(content.includes('letterSpacing: 0.8'), 'appSubtitle must have letterSpacing: 0.8');
+  assert.ok(
+    content.includes("textTransform: 'uppercase'") || content.includes('textTransform: "uppercase"'),
+    'appSubtitle must have uppercase transform'
+  );
+});
+
 test('loginLogo.test.mjs compliance: zero em dashes', () => {
   const testPath = path.join(rootDir, 'tests/unit/loginLogo.test.mjs');
   const content = fs.readFileSync(testPath, 'utf8');
