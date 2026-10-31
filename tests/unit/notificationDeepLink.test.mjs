@@ -118,6 +118,12 @@ test('parseNotificationResponseAction: supports direct data property on response
   assert.strictEqual(action, 'open_journal');
 });
 
+test('parseNotificationResponseAction: extracts action open_journal from bare payload objects', () => {
+  assert.strictEqual(parseNotificationResponseAction({ action: 'open_journal' }), 'open_journal');
+  assert.strictEqual(parseNotificationResponseAction({ type: 'local_daily_reminder' }), 'open_journal');
+  assert.strictEqual(parseNotificationResponseAction({ type: 'server_daily_reminder' }), 'open_journal');
+});
+
 test('parseNotificationResponseAction: returns null for unhandled, malformed, or empty responses', () => {
   assert.strictEqual(parseNotificationResponseAction(null), null);
   assert.strictEqual(parseNotificationResponseAction(undefined), null);

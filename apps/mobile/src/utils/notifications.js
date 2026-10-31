@@ -187,8 +187,9 @@ export function setupNotificationReceivedListener() {
  */
 export function parseNotificationResponseAction(response) {
   if (!response || typeof response !== 'object') return null;
-  const data = response?.notification?.request?.content?.data || response?.data || null;
-  if (!data || typeof data !== 'object') return null;
+  const rawData = response?.notification?.request?.content?.data ?? response?.data ?? response;
+  const data = rawData && typeof rawData === 'object' ? rawData : null;
+  if (!data) return null;
 
   if (data.action === 'open_journal') {
     return 'open_journal';
