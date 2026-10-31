@@ -1079,7 +1079,7 @@ function kirimPushNotifikasiHarian() {
     to: String(u['ExpoPushToken']).trim(),
     title: '📋 Waktunya Kirim Logbook!',
     body: 'Halo ' + u['Nama'] + ', jangan lupa isi jurnal kegiatan hari ini ya.',
-    data: { type: 'server_daily_reminder' },
+    data: { action: 'open_journal', type: 'server_daily_reminder' },
     sound: 'notif.wav',
     channelId: 'daily-reminder-v2', // Sesuai dengan channelId di mobile app
     priority: 'high'

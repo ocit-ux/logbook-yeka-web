@@ -141,12 +141,9 @@ function MainApp() {
     const handleNotificationAction = (action) => {
       if (!action) return;
       if (action === 'open_journal') {
-        if (userRef.current) {
-          setActiveTab('home');
-        } else {
-          setPendingNotificationAction('open_journal');
-          pendingNotificationActionRef.current = 'open_journal';
-        }
+        setActiveTab('home');
+        setPendingNotificationAction('open_journal');
+        pendingNotificationActionRef.current = 'open_journal';
       }
     };
 
@@ -230,8 +227,10 @@ function MainApp() {
     syncPushTokenToServer(u);
     if (pendingNotificationAction === 'open_journal' || pendingNotificationActionRef.current === 'open_journal') {
       setActiveTab('home');
-      setPendingNotificationAction(null);
-      pendingNotificationActionRef.current = null;
+      setTimeout(() => {
+        setPendingNotificationAction(null);
+        pendingNotificationActionRef.current = null;
+      }, 500);
     }
   };
 
@@ -239,8 +238,11 @@ function MainApp() {
   useEffect(() => {
     if (user && (pendingNotificationAction === 'open_journal' || pendingNotificationActionRef.current === 'open_journal')) {
       setActiveTab('home');
-      setPendingNotificationAction(null);
-      pendingNotificationActionRef.current = null;
+      const timer = setTimeout(() => {
+        setPendingNotificationAction(null);
+        pendingNotificationActionRef.current = null;
+      }, 500);
+      return () => clearTimeout(timer);
     }
   }, [user, pendingNotificationAction]);
 
@@ -295,13 +297,13 @@ function MainApp() {
     } else {
       switch (activeTab) {
         case 'home':
-          return <DashboardScreen user={user} onLogout={handleLogout} />;
+          return <DashboardScreen user={user} onLogout={handleLogout} initialAction={pendingNotificationAction} />;
         case 'history':
           return <RiwayatScreen user={user} />;
         case 'profile':
           return <ProfileScreen user={user} onLogout={handleLogout} onUpdateUser={setUser} />;
         default:
-          return <DashboardScreen user={user} />;
+          return <DashboardScreen user={user} onLogout={handleLogout} initialAction={pendingNotificationAction} />;
       }
     }
   };

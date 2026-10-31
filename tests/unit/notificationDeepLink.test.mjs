@@ -452,3 +452,76 @@ test('Deep link simulation: unauthenticated intent is queued and executed upon s
   assert.strictEqual(activeTab, 'home', 'Tab must immediately switch to home when authenticated');
   assert.strictEqual(pendingNotificationAction, null, 'No pending action when already authenticated');
 });
+
+test('Code.gs static contract: kirimPushNotifikasiHarian includes action: open_journal in push payload', () => {
+  const codeGsPath = path.join(rootDir, 'apps/backend-gas/Code.gs');
+  const codeGsSource = fs.readFileSync(codeGsPath, 'utf8');
+
+  assert.match(
+    codeGsSource,
+    /function\s+kirimPushNotifikasiHarian\s*\(/,
+    'Code.gs must define kirimPushNotifikasiHarian function'
+  );
+  assert.match(
+    codeGsSource,
+    /action:\s*['"]open_journal['"]/,
+    'Code.gs push notification payload must include action: open_journal'
+  );
+  assert.match(
+    codeGsSource,
+    /type:\s*['"]server_daily_reminder['"]/,
+    'Code.gs push notification payload must preserve type: server_daily_reminder'
+  );
+});
+
+test('DashboardScreen.js static contract: accepts initialAction prop and handles open_journal readiness', () => {
+  const dashboardPath = path.join(rootDir, 'apps/mobile/src/screens/DashboardScreen.js');
+  const dashboardSource = fs.readFileSync(dashboardPath, 'utf8');
+
+  assert.match(
+    dashboardSource,
+    /export\s+default\s+function\s+DashboardScreen\s*\(\s*\{[^}]*initialAction[^}]*\}\s*\)/,
+    'DashboardScreen must accept initialAction in props'
+  );
+  assert.match(
+    dashboardSource,
+    /initialAction\s*===?\s*['"]open_journal['"]/,
+    'DashboardScreen must handle initialAction === open_journal'
+  );
+  assert.match(
+    dashboardSource,
+    /ref=\{kegiatanInputRef\}/,
+    'DashboardScreen must attach ref to logbook entry input for focus readiness'
+  );
+});
+
+test('App.js static contract: passes initialAction to DashboardScreen', () => {
+  const appJsPath = path.join(rootDir, 'apps/mobile/App.js');
+  const appSource = fs.readFileSync(appJsPath, 'utf8');
+
+  assert.match(
+    appSource,
+    /<DashboardScreen[^>]*initialAction=\{\s*pendingNotificationAction\s*\}/,
+    'App.js must pass initialAction={pendingNotificationAction} to DashboardScreen'
+  );
+});
+
+test('Typography Integrity: zero em dashes across all touched notification deep link files', () => {
+  const filesToCheck = [
+    'apps/mobile/src/utils/notifications.js',
+    'apps/mobile/App.js',
+    'apps/mobile/src/screens/DashboardScreen.js',
+    'apps/backend-gas/Code.gs',
+    'tests/unit/notificationDeepLink.test.mjs'
+  ];
+
+  for (const relativePath of filesToCheck) {
+    const fullPath = path.join(rootDir, relativePath);
+    const content = fs.readFileSync(fullPath, 'utf8');
+    assert.strictEqual(
+      content.includes('\u2014'),
+      false,
+      `${relativePath} must contain zero em dashes`
+    );
+  }
+});

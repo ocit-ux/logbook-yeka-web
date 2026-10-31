@@ -95,7 +95,7 @@ const JSWheelPicker = ({ items, selectedValue, onValueChange, theme }) => {
 
 
 
-export default function DashboardScreen({ user, onLogout }) {
+export default function DashboardScreen({ user, onLogout, initialAction }) {
   const { theme, isDark } = useTheme();
   const [location, setLocation] = useState(null);
   const [wilayah, setWilayah] = useState('');
@@ -112,6 +112,8 @@ export default function DashboardScreen({ user, onLogout }) {
   const locationWatcherSubRef = React.useRef(null);
   const lastGeocodedCoordsRef = React.useRef(null);
   const appStateTeardownTimeoutRef = React.useRef(null);
+  const kegiatanInputRef = React.useRef(null);
+  const mainScrollRef = React.useRef(null);
 
   const [mode, setMode] = useState('hadir'); // 'hadir' | 'izin'
   const [showCameraModal, setShowCameraModal] = useState(false);
@@ -151,6 +153,21 @@ export default function DashboardScreen({ user, onLogout }) {
       setPhoto(null); // Mencegah foto kehadiran nempel ke form izin (bug fix)
     }
   };
+
+  // Tangani deep-link pembukaan jurnal dari notifikasi
+  useEffect(() => {
+    if (initialAction === 'open_journal') {
+      if (mode !== 'hadir') {
+        handleModeChange('hadir');
+      }
+      const focusTimer = setTimeout(() => {
+        if (kegiatanInputRef.current) {
+          kegiatanInputRef.current.focus?.();
+        }
+      }, 350);
+      return () => clearTimeout(focusTimer);
+    }
+  }, [initialAction]);
 
   const fetchWilayahAsync = async (latitude, longitude) => {
     if (latitude == null || longitude == null) return;
@@ -678,7 +695,7 @@ export default function DashboardScreen({ user, onLogout }) {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={mainScrollRef} style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Toggle Mode */}
         <View style={styles.toggleContainer}>
           <TouchableOpacity style={[styles.toggleBtn, mode === 'hadir' && styles.toggleActive]} onPress={() => handleModeChange('hadir')}>
@@ -800,7 +817,7 @@ export default function DashboardScreen({ user, onLogout }) {
             {/* Form Rincian Hadir */}
             <View style={[styles.card, { zIndex: 1 }]}>
               <Text style={styles.cardTitle}>Rincian Kegiatan</Text>
-              <TextInput style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]} placeholder="Jurnal kegiatan yang dikerjakan" placeholderTextColor={theme.textSecondary} multiline={true} numberOfLines={4} value={form.kegiatan} onChangeText={(t) => handleInputChange('kegiatan', t)} />
+              <TextInput ref={kegiatanInputRef} style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]} placeholder="Jurnal kegiatan yang dikerjakan" placeholderTextColor={theme.textSecondary} multiline={true} numberOfLines={4} value={form.kegiatan} onChangeText={(t) => handleInputChange('kegiatan', t)} />
               <TextInput style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]} placeholder="Hasil kegiatan / Output" placeholderTextColor={theme.textSecondary} multiline={true} numberOfLines={4} value={form.hasil} onChangeText={(t) => handleInputChange('hasil', t)} />
             </View>
           </>
