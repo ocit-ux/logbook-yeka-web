@@ -42,6 +42,37 @@ test('getBrandLogoSource returns fallback data URI when hasError is true', async
   );
 });
 
+test('getBrandLogoSource(true) returns fallback data URI even when globalThis.require is defined', async () => {
+  const { FALLBACK_LOGO_URI, getBrandLogoSource } = await import('../../apps/mobile/src/utils/brandLogo.js');
+
+  const originalRequire = globalThis.require;
+  try {
+    globalThis.require = () => 12345;
+    const result = getBrandLogoSource(true);
+    assert.deepStrictEqual(
+      result,
+      { uri: FALLBACK_LOGO_URI },
+      'getBrandLogoSource(true) must return { uri: FALLBACK_LOGO_URI } even when globalThis.require is defined'
+    );
+    assert.notStrictEqual(result, 12345, 'Must not return asset ID when hasError is true');
+  } finally {
+    globalThis.require = originalRequire;
+  }
+});
+
+test('FALLBACK_LOGO_URI payload matches assets/logo.png binary exactly', async () => {
+  const { FALLBACK_LOGO_URI } = await import('../../apps/mobile/src/utils/brandLogo.js');
+  const logoPath = path.join(rootDir, 'apps/mobile/assets/logo.png');
+  const fileBuf = fs.readFileSync(logoPath);
+  const base64Data = FALLBACK_LOGO_URI.replace('data:image/png;base64,', '');
+  const decodedBuf = Buffer.from(base64Data, 'base64');
+  assert.strictEqual(
+    fileBuf.equals(decodedBuf),
+    true,
+    'Decoded buffer must match apps/mobile/assets/logo.png binary exactly'
+  );
+});
+
 test('getBrandLogoSource resolves asset require reference when hasError is false', async () => {
   const { getBrandLogoSource } = await import('../../apps/mobile/src/utils/brandLogo.js');
 
