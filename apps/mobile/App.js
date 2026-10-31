@@ -15,15 +15,31 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import AdminScreen from './src/screens/AdminScreen';
 import AdminKaryawanScreen from './src/screens/AdminKaryawanScreen';
 import EnterpriseAlertModal from './src/components/EnterpriseAlertModal';
-import { getExpoPushToken, setupNotificationReceivedListener } from './src/utils/notifications';
+import {
+  getExpoPushToken,
+  setupNotificationReceivedListener,
+  setupNotificationResponseReceivedListener,
+  checkInitialNotificationResponseAsync
+} from './src/utils/notifications';
 
 function MainApp() {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [user, setUser] = useState(null);
+  const userRef = useRef(user);
   const [activeTab, setActiveTab] = useState('home');
+  const [pendingNotificationAction, setPendingNotificationAction] = useState(null);
+  const pendingNotificationActionRef = useRef(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [deviceBlocked, setDeviceBlocked] = useState(false);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    pendingNotificationActionRef.current = pendingNotificationAction;
+  }, [pendingNotificationAction]);
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -120,6 +136,37 @@ function MainApp() {
     };
   }, []);
 
+  // Listener dan cold-start resolver untuk deep-link respon notifikasi
+  useEffect(() => {
+    const handleNotificationAction = (action) => {
+      if (!action) return;
+      if (action === 'open_journal') {
+        if (userRef.current) {
+          setActiveTab('home');
+        } else {
+          setPendingNotificationAction('open_journal');
+          pendingNotificationActionRef.current = 'open_journal';
+        }
+      }
+    };
+
+    const responseSub = setupNotificationResponseReceivedListener((action) => {
+      handleNotificationAction(action);
+    });
+
+    checkInitialNotificationResponseAsync()
+      .then((action) => {
+        if (action) {
+          handleNotificationAction(action);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      responseSub?.remove?.();
+    };
+  }, []);
+
   const handleApplyUpdate = async () => {
     if (isApplyingUpdate || isRestarting) return;
     setIsApplyingUpdate(true);
@@ -174,7 +221,28 @@ function MainApp() {
     await AsyncStorage.removeItem('@cached_user');
     setUser(null);
     setActiveTab('home');
+    setPendingNotificationAction(null);
+    pendingNotificationActionRef.current = null;
   };
+
+  const handleLoginSuccess = async (u) => {
+    setUser(u);
+    syncPushTokenToServer(u);
+    if (pendingNotificationAction === 'open_journal' || pendingNotificationActionRef.current === 'open_journal') {
+      setActiveTab('home');
+      setPendingNotificationAction(null);
+      pendingNotificationActionRef.current = null;
+    }
+  };
+
+  // Eksekusi aksi notifikasi tertunda begitu user terotentikasi (auto-login atau login manual)
+  useEffect(() => {
+    if (user && (pendingNotificationAction === 'open_journal' || pendingNotificationActionRef.current === 'open_journal')) {
+      setActiveTab('home');
+      setPendingNotificationAction(null);
+      pendingNotificationActionRef.current = null;
+    }
+  }, [user, pendingNotificationAction]);
 
   // Efek Polling untuk Sesi Ganda (120 detik)
   useEffect(() => {
@@ -264,10 +332,7 @@ function MainApp() {
           </View>
         </View>
       ) : !user ? (
-        <LoginScreen onLoginSuccess={async (u) => {
-          setUser(u);
-          syncPushTokenToServer(u);
-        }} />
+        <LoginScreen onLoginSuccess={handleLoginSuccess} />
       ) : (
         <View style={{ flex: 1, backgroundColor: theme.background }}>
           {/* Main Content Area */}

@@ -323,3 +323,132 @@ test('scheduleDailyReminder: includes action: open_journal in scheduled payload 
     'Payload content.data must preserve type: local_daily_reminder'
   );
 });
+
+test('App.js static contract: imports setupNotificationResponseReceivedListener and checkInitialNotificationResponseAsync', () => {
+  const appJsPath = path.join(rootDir, 'apps/mobile/App.js');
+  const appSource = fs.readFileSync(appJsPath, 'utf8');
+
+  assert.match(
+    appSource,
+    /import\s*\{[^}]*setupNotificationResponseReceivedListener[^}]*\}\s*from\s*['"]\.\/src\/utils\/notifications['"]/,
+    'App.js must import setupNotificationResponseReceivedListener from ./src/utils/notifications'
+  );
+  assert.match(
+    appSource,
+    /import\s*\{[^}]*checkInitialNotificationResponseAsync[^}]*\}\s*from\s*['"]\.\/src\/utils\/notifications['"]/,
+    'App.js must import checkInitialNotificationResponseAsync from ./src/utils/notifications'
+  );
+});
+
+test('App.js static contract: manages pendingNotificationAction and userRef state', () => {
+  const appJsPath = path.join(rootDir, 'apps/mobile/App.js');
+  const appSource = fs.readFileSync(appJsPath, 'utf8');
+
+  assert.match(
+    appSource,
+    /pendingNotificationAction/i,
+    'App.js must define or manage pendingNotificationAction'
+  );
+  assert.match(
+    appSource,
+    /setPendingNotificationAction/,
+    'App.js must define setPendingNotificationAction state setter'
+  );
+  assert.match(
+    appSource,
+    /userRef/,
+    'App.js must maintain userRef to safely inspect auth state inside listener closures'
+  );
+});
+
+test('App.js static contract: routes to home when open_journal is received or queues if unauthenticated', () => {
+  const appJsPath = path.join(rootDir, 'apps/mobile/App.js');
+  const appSource = fs.readFileSync(appJsPath, 'utf8');
+
+  assert.match(
+    appSource,
+    /setupNotificationResponseReceivedListener\s*\(/,
+    'App.js must register setupNotificationResponseReceivedListener'
+  );
+  assert.match(
+    appSource,
+    /checkInitialNotificationResponseAsync\s*\(/,
+    'App.js must inspect cold-start initial notification via checkInitialNotificationResponseAsync'
+  );
+  assert.match(
+    appSource,
+    /open_journal/,
+    'App.js must check for open_journal notification action'
+  );
+  assert.match(
+    appSource,
+    /setActiveTab\(\s*['"]home['"]\s*\)/,
+    'App.js must switch activeTab to home on notification response'
+  );
+});
+
+test('App.js static contract: handleLoginSuccess resolves pendingNotificationAction and routes to home', () => {
+  const appJsPath = path.join(rootDir, 'apps/mobile/App.js');
+  const appSource = fs.readFileSync(appJsPath, 'utf8');
+
+  assert.match(
+    appSource,
+    /handleLoginSuccess/,
+    'App.js must define handleLoginSuccess'
+  );
+  assert.match(
+    appSource,
+    /setPendingNotificationAction\(\s*null\s*\)/,
+    'App.js must reset pendingNotificationAction to null once consumed'
+  );
+});
+
+test('Typography Integrity: zero em dashes across App.js', () => {
+  const appJsPath = path.join(rootDir, 'apps/mobile/App.js');
+  const appSource = fs.readFileSync(appJsPath, 'utf8');
+  assert.strictEqual(
+    appSource.includes('\u2014'),
+    false,
+    'apps/mobile/App.js must contain zero em dashes'
+  );
+});
+
+test('Deep link simulation: unauthenticated intent is queued and executed upon successful login', () => {
+  let activeTab = 'profile';
+  let currentUser = null;
+  let pendingNotificationAction = null;
+
+  const simulateNotificationAction = (action) => {
+    if (action === 'open_journal') {
+      if (currentUser) {
+        activeTab = 'home';
+      } else {
+        pendingNotificationAction = action;
+      }
+    }
+  };
+
+  const simulateLoginSuccess = (user) => {
+    currentUser = user;
+    if (pendingNotificationAction === 'open_journal') {
+      activeTab = 'home';
+      pendingNotificationAction = null;
+    }
+  };
+
+  // 1. Notification received while unauthenticated
+  simulateNotificationAction('open_journal');
+  assert.strictEqual(activeTab, 'profile', 'Tab should not change while unauthenticated');
+  assert.strictEqual(pendingNotificationAction, 'open_journal', 'Intent must be queued');
+
+  // 2. User logs in successfully
+  simulateLoginSuccess({ username: 'guru1', role: 'guru' });
+  assert.strictEqual(activeTab, 'home', 'Tab must transition to home after login');
+  assert.strictEqual(pendingNotificationAction, null, 'Pending action must be cleared');
+
+  // 3. Notification received while already authenticated
+  activeTab = 'history';
+  simulateNotificationAction('open_journal');
+  assert.strictEqual(activeTab, 'home', 'Tab must immediately switch to home when authenticated');
+  assert.strictEqual(pendingNotificationAction, null, 'No pending action when already authenticated');
+});
