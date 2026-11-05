@@ -49,7 +49,7 @@
 - [x] **Step 4: Verify backend unit tests pass**
   Run `node --test tests/backend/rkbService.test.mjs`.
 
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   Commit Task 1 changes with message: `feat(backend): implement rkb drive parsing engine and gas actions` (zero em dashes in commit message).
 
 ---
@@ -99,7 +99,7 @@
 - Create: `apps/mobile/src/utils/rkbApi.js` (API client for fetching RKB data with local caching)
 - Create: `tests/unit/rkbMobile.test.mjs` (unit tests for mobile API, caching, and screen contracts)
 
-- [ ] **Step 1: Write failing unit test in `tests/unit/rkbMobile.test.mjs`**
+- [x] **Step 1: Write failing unit test in `tests/unit/rkbMobile.test.mjs`**
   - Test `fetchRkbDataAsync` fetches from GAS API with correct action and user payload.
   - Test `fetchRkbDataAsync` falls back to cached data when offline.
   - Test `RkbScreen.js` exports default component with executive dark theme styling and metric cards.
@@ -107,10 +107,10 @@
   - Test `App.js` registers `'rkb'` page route.
   - Rule R-02 typography check.
 
-- [ ] **Step 2: Run test to confirm failure**
+- [x] **Step 2: Run test to confirm failure**
   Run `node --test tests/unit/rkbMobile.test.mjs`.
 
-- [ ] **Step 3: Implement Mobile RKB Screen and API integration**
+- [x] **Step 3: Implement Mobile RKB Screen and API integration**
   - Create `apps/mobile/src/utils/rkbApi.js` with AsyncStorage cache support.
   - Create `apps/mobile/src/screens/RkbScreen.js`:
     - Responsive executive dark theme matching the screenshot design.
@@ -122,10 +122,10 @@
   - Connect navigation in `apps/mobile/src/screens/DashboardScreen.js` and `apps/mobile/App.js`.
   - Ensure zero em dashes in code and comments.
 
-- [ ] **Step 4: Verify mobile unit tests pass**
+- [x] **Step 4: Verify mobile unit tests pass**
   Run `node --test tests/unit/rkbMobile.test.mjs`.
 
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   Commit Task 3 changes with message: `feat(mobile): implement executive rkb kpi screen for android and ios web` (zero em dashes in commit message).
 
 ---
@@ -137,19 +137,19 @@
 - Verify: `apps/mobile/app.json` (OTA safety invariants)
 - Verify: Rule R-02 compliance across all git diffs
 
-- [ ] **Step 1: Run full monorepo test suite**
+- [x] **Step 1: Run full monorepo test suite**
   Run `npm.cmd test` and verify 100% pass rate across all suites (backend, watermark, integration, unit).
 
-- [ ] **Step 2: Run automated Rule R-02 typography scan**
+- [x] **Step 2: Run automated Rule R-02 typography scan**
   Scan all touched files for zero em dashes (`\u2014` or literal em dashes).
 
-- [ ] **Step 3: Verify OTA safety**
+- [x] **Step 3: Verify OTA safety**
   Ensure `apps/mobile/app.json` keeps `version: "1.0.0"` and `runtimeVersion: { policy: "appVersion" }` with 0 native dependencies added.
 
-- [ ] **Step 4: Update plan document checkboxes and commit**
+- [x] **Step 4: Update plan document checkboxes and commit**
   Check off all tasks in `docs/superpowers/plans/2026-11-05-monitoring-rkb-kpi-dashboard.md`.
   Commit with message: `docs: complete rkb kpi monitoring implementation plan` (zero em dashes in commit message).
 
-- [ ] **Step 5: Final review and push to GitHub**
+- [x] **Step 5: Final review and push to GitHub**
   Dispatch Final Whole-Branch Code Reviewer subagent, verify approval, then run `git push origin master`.
 
