@@ -95,7 +95,7 @@ const JSWheelPicker = ({ items, selectedValue, onValueChange, theme }) => {
 
 
 
-export default function DashboardScreen({ user, onLogout, initialAction }) {
+export default function DashboardScreen({ user, onLogout, initialAction, onNavigateTab }) {
   const { theme, isDark } = useTheme();
   const [location, setLocation] = useState(null);
   const [wilayah, setWilayah] = useState('');
@@ -689,6 +689,16 @@ export default function DashboardScreen({ user, onLogout, initialAction }) {
             </View>
           </View>
         </View>
+        {onNavigateTab && (
+          <TouchableOpacity
+            style={[styles.logoutBtn, { marginRight: 8 }]}
+            onPress={() => onNavigateTab('rkb')}
+            activeOpacity={0.8}
+            accessibilityLabel="Monitoring RKB & KPI"
+          >
+            <Ionicons name="analytics-outline" size={20} color="#d4af37" />
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.logoutBtn} onPress={onLogout} activeOpacity={0.8} accessibilityLabel="Keluar">
           <Ionicons name="log-out-outline" size={20} color="#fff" />
         </TouchableOpacity>

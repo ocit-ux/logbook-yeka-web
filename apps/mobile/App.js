@@ -14,6 +14,7 @@ import RiwayatScreen from './src/screens/RiwayatScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import AdminScreen from './src/screens/AdminScreen';
 import AdminKaryawanScreen from './src/screens/AdminKaryawanScreen';
+import RkbScreen from './src/screens/RkbScreen';
 import EnterpriseAlertModal from './src/components/EnterpriseAlertModal';
 import {
   getExpoPushToken,
@@ -287,6 +288,8 @@ function MainApp() {
       switch (activeTab) {
         case 'home':
           return <AdminScreen />;
+        case 'rkb':
+          return <RkbScreen user={user} isAdmin={isAdmin} onBack={() => setActiveTab('home')} />;
         case 'history':
           return <AdminKaryawanScreen />;
         case 'profile':
@@ -297,13 +300,15 @@ function MainApp() {
     } else {
       switch (activeTab) {
         case 'home':
-          return <DashboardScreen user={user} onLogout={handleLogout} initialAction={pendingNotificationAction} />;
+          return <DashboardScreen user={user} onLogout={handleLogout} initialAction={pendingNotificationAction} onNavigateTab={setActiveTab} />;
+        case 'rkb':
+          return <RkbScreen user={user} isAdmin={isAdmin} onBack={() => setActiveTab('home')} />;
         case 'history':
           return <RiwayatScreen user={user} />;
         case 'profile':
           return <ProfileScreen user={user} onLogout={handleLogout} onUpdateUser={setUser} />;
         default:
-          return <DashboardScreen user={user} onLogout={handleLogout} initialAction={pendingNotificationAction} />;
+          return <DashboardScreen user={user} onLogout={handleLogout} initialAction={pendingNotificationAction} onNavigateTab={setActiveTab} />;
       }
     }
   };
@@ -352,6 +357,17 @@ function MainApp() {
               />
               <Text style={[styles.navText, activeTab === 'home' && { color: isAdmin ? theme.primaryDark : theme.primary, fontWeight: 'bold' }]}>
                 {isAdmin ? 'REKAP JURNAL' : 'Logbook'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('rkb')}>
+              <Ionicons 
+                name={activeTab === 'rkb' ? 'analytics' : 'analytics-outline'} 
+                size={24} 
+                color={activeTab === 'rkb' ? (isAdmin ? theme.primaryDark : theme.primary) : theme.textSecondary} 
+              />
+              <Text style={[styles.navText, activeTab === 'rkb' && { color: isAdmin ? theme.primaryDark : theme.primary, fontWeight: 'bold' }]}>
+                RKB & KPI
               </Text>
             </TouchableOpacity>
 
