@@ -92,9 +92,17 @@ export async function fetchRkbDataMobile({
     const res = await http.post(API_URL, payload, { timeout });
     const resData = res && res.data ? res.data : null;
 
-    if (resData && (resData.success || resData.found !== undefined)) {
+    // Handle both wrapped { status: 'success', data: { ... } } from GAS doPost and direct { success: true, ... }
+    let actualData = resData;
+    if (resData && resData.status === 'success' && resData.data && typeof resData.data === 'object') {
+      actualData = resData.data;
+    } else if (resData && resData.data && typeof resData.data === 'object' && (resData.data.success || resData.data.found !== undefined)) {
+      actualData = resData.data;
+    }
+
+    if (actualData && (actualData.success || actualData.found !== undefined)) {
       const responseToSave = {
-        ...resData,
+        ...actualData,
         fromCache: false,
         cachedAt: Date.now()
       };
@@ -105,7 +113,7 @@ export async function fetchRkbDataMobile({
       }
       return responseToSave;
     }
-    throw new Error(resData?.message || 'Gagal memuat data RKB dari server.');
+    throw new Error(actualData?.message || resData?.message || 'Gagal memuat data RKB dari server.');
   } catch (networkErr) {
     // Attempt fallback from storage
     try {
@@ -134,5 +142,11 @@ export async function fetchAllRkbSummaryMobile({ bulan, tahun, timeout = 15000 }
   };
 
   const res = await http.post(API_URL, payload, { timeout });
-  return res && res.data ? res.data : { success: false, summary: [] };
+  const resData = res && res.data ? res.data : null;
+  const actualData = (resData && resData.status === 'success' && resData.data)
+    ? resData.data
+    : (resData && resData.data)
+    ? resData.data
+    : resData;
+  return actualData || { success: false, summary: [] };
 }

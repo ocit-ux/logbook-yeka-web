@@ -523,13 +523,7 @@
                     </div>
                 </div>
 
-                <!-- Advisory Banner (GAS Deployment Pending or Info) -->
-                <div id="rkb-advisory-banner" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-3 shadow-sm">
-                    <i class="fa-solid fa-circle-info text-amber-600 text-base mt-0.5"></i>
-                    <div>
-                        <div class="font-bold text-amber-950 mb-0.5" id="rkb-advisory-title">Data Pratinjau Template RKB YEKA</div>
-                        <div id="rkb-advisory-text" class="text-amber-800 leading-relaxed">Backend GAS di Google Cloud belum diperbarui (action: getRkbKaryawan). Menampilkan data pratinjau template RKB aktif. Segera deploy versi baru di Google Apps Script.</div>
-                    </div>
+                
                 </div>
 
                 <!-- Filter Bar -->
@@ -1871,7 +1865,7 @@
                 }
 
                 const currentVal = select.value;
-                select.innerHTML = namaList.map(nama => {
+                select.innerHTML = '<option value="">-- Pilih Personel --</option>' + namaList.map(nama => {
                     const selected = (currentVal === nama || (!currentVal && nama === currentUser.nama)) ? ' selected' : '';
                     return '<option value="' + escapeHtml(nama) + '"' + selected + '>' + escapeHtml(nama) + '</option>';
                 }).join('');
@@ -1924,7 +1918,7 @@
                 subtitleEl.innerText = 'Memuat data RKB ' + (targetNama || 'karyawan') + ' periode ' + targetBulan + ' ' + targetTahun + '...';
             }
             if (tableBody) {
-                tableBody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400 font-medium"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Mengambil berkas RKB dari server...</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-gray-500 font-medium"><i class="fa-solid fa-spinner fa-spin mr-2 text-[#1b4d3e]"></i>Mengambil berkas RKB dari Google Drive...</td></tr>';
             }
 
             try {
@@ -1934,7 +1928,7 @@
                 } else {
                     res = {
                         success: true,
-                        found: true,
+                        found: false,
                         nama: targetNama,
                         divisi: targetDivisi,
                         bulan: targetBulan,
@@ -1942,26 +1936,16 @@
                         totalKpi: 0,
                         predikat: 'Sangat Kurang',
                         statusKegiatan: { selesai: 0, proses: 0, belum: 0, total: 0 },
-                        trenKpi: [
-                            { bulan: 'Jan', skor: 0, label: 'Jan' },
-                            { bulan: 'Feb', skor: 0, label: 'Feb' },
-                            { bulan: 'Mar', skor: 0, label: 'Mar' },
-                            { bulan: 'Apr', skor: 0, label: 'Apr' },
-                            { bulan: 'Mei', skor: 0, label: 'Mei' },
-                            { bulan: 'Jun', skor: 0, label: 'Jun' },
-                            { bulan: 'Jul', skor: 0, label: 'Jul' },
-                            { bulan: 'Agu', skor: 0, label: 'Agu' },
-                            { bulan: 'Sep', skor: 0, label: 'Sep' },
-                            { bulan: 'Okt', skor: 0, label: 'Okt' },
-                            { bulan: 'Nov', skor: 0, label: 'Nov' },
-                            { bulan: 'Des', skor: 0, label: 'Des' }
-                        ],
+                        trenKpi: [],
                         activities: []
                     };
                 }
 
-                cacheRkbData = res;
-                renderRkbDashboard(res);
+                // Unwrap { status: 'success', data: { ... } } if present
+                const data = (res && res.status === 'success' && res.data) ? res.data : res;
+
+                cacheRkbData = data;
+                renderRkbDashboard(data);
 
                 const now = new Date();
                 const timeStr = String(now.getHours()).padStart(2, '0') + ':' +
@@ -1970,13 +1954,13 @@
                 if (updatedEl) updatedEl.innerText = timeStr;
 
                 if (subtitleEl) {
-                    subtitleEl.innerText = (res.nama || targetNama || 'Karyawan') + ' (' + (res.divisi || targetDivisi || 'Umum') + ') | Periode ' + targetBulan + ' ' + targetTahun;
+                    subtitleEl.innerText = (data.nama || targetNama || 'Karyawan') + ' (' + (data.divisi || targetDivisi || 'Umum') + ') | Periode ' + targetBulan + ' ' + targetTahun;
                 }
             } catch (err) {
                 console.error('loadRkbDashboard error:', err);
-                if (subtitleEl) subtitleEl.innerText = 'Gagal memuat RKB: ' + (err.message || String(err));
+                if (subtitleEl) subtitleEl.innerText = 'Kendala memuat RKB: ' + (err.message || String(err));
                 if (tableBody) {
-                    tableBody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-rose-400 font-medium">Terjadi kendala saat memuat berkas RKB: ' + escapeHtml(err.message || String(err)) + '</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-rose-500 font-medium">Terjadi kendala saat memuat berkas RKB: ' + escapeHtml(err.message || String(err)) + '</td></tr>';
                 }
             }
         }
@@ -1993,19 +1977,19 @@
             if (predikatEl) {
                 const pred = data.predikat || 'Sangat Kurang';
                 predikatEl.innerText = pred;
-                let colorClasses = 'bg-slate-800 text-slate-200 border-slate-700';
+                let colorClasses = 'bg-gray-100 text-gray-700 border-gray-200';
                 if (pred === 'Sangat Baik') {
-                    colorClasses = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+                    colorClasses = 'bg-emerald-50 text-emerald-800 border-emerald-300';
                 } else if (pred === 'Baik') {
-                    colorClasses = 'bg-teal-500/20 text-teal-300 border-teal-500/40';
+                    colorClasses = 'bg-teal-50 text-[#1b4d3e] border-teal-300';
                 } else if (pred === 'Cukup') {
-                    colorClasses = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40';
+                    colorClasses = 'bg-amber-50 text-amber-800 border-amber-300';
                 } else if (pred === 'Kurang') {
-                    colorClasses = 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+                    colorClasses = 'bg-orange-50 text-orange-800 border-orange-300';
                 } else if (pred === 'Sangat Kurang') {
-                    colorClasses = 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+                    colorClasses = 'bg-rose-50 text-rose-800 border-rose-300';
                 }
-                predikatEl.className = 'inline-block px-3 py-1.5 rounded-xl text-lg sm:text-xl font-bold border ' + colorClasses;
+                predikatEl.className = 'inline-block px-3.5 py-1.5 rounded-xl text-lg sm:text-xl font-bold border ' + colorClasses;
             }
 
             const st = data.statusKegiatan || { selesai: 0, proses: 0, belum: 0, total: 0 };
@@ -2023,23 +2007,23 @@
                 badgeBelum.innerHTML = '<i class="fa-solid fa-circle-xmark text-[10px]"></i>' + (st.belum || 0) + ' Belum';
             }
 
-            // Render table
+            // Render table with pure Katulistiwa enterprise theme
             const tableBody = document.getElementById('table-rkb-kegiatan');
             if (tableBody) {
                 const list = data.activities || data.kegiatan || [];
                 if (list.length === 0) {
                     const emptyMsg = data.message || 'Tidak ada data kegiatan RKB untuk periode ini.';
-                    tableBody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400 italic">' + escapeHtml(emptyMsg) + '</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-gray-400 italic">' + escapeHtml(emptyMsg) + '</td></tr>';
                 } else {
                     tableBody.innerHTML = list.map(item => {
                         const status = item.status || 'Belum';
-                        let badgeClass = 'bg-rose-500/15 text-rose-300 border-rose-500/30';
+                        let badgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
                         let iconClass = 'fa-circle-xmark';
-                        if (status === 'Selesai') {
-                            badgeClass = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+                        if (status === 'Selesai' || status === 'Terlaksana') {
+                            badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
                             iconClass = 'fa-circle-check';
                         } else if (status === 'Proses') {
-                            badgeClass = 'bg-amber-500/15 text-amber-300 border-amber-500/30';
+                            badgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
                             iconClass = 'fa-spinner';
                         }
 
@@ -2054,16 +2038,19 @@
                             skorText = Number(item.skor).toFixed(1);
                         }
 
-                        return '<tr class="hover:bg-[#1e293b]/50 transition duration-150">' +
-                            '<td class="py-3 px-4 font-mono font-bold text-slate-200 whitespace-nowrap">' + escapeHtml(item.kode || '-') + '</td>' +
-                            '<td class="py-3 px-4 text-slate-300 font-medium leading-relaxed max-w-md">' + escapeHtml(item.kegiatan || '-') + '</td>' +
-                            '<td class="py-3 px-4 text-right font-mono text-cyan-300 font-semibold">' + bobotText + '</td>' +
+                        return '<tr class="hover:bg-emerald-50/40 transition duration-150 border-b border-gray-100">' +
+                            '<td class="py-3 px-4 font-mono font-bold text-[#1b4d3e] whitespace-nowrap"><span class="px-2.5 py-1 rounded bg-emerald-50 border border-emerald-200 text-[#1b4d3e] text-xs font-bold">' + escapeHtml(item.kode || '-') + '</span></td>' +
+                            '<td class="py-3 px-4 text-gray-800 font-medium leading-relaxed max-w-md">' +
+                                '<div class="font-bold text-gray-900">' + escapeHtml(item.kegiatan || '-') + '</div>' +
+                                (item.output ? '<div class="text-[11px] text-gray-500 mt-0.5">Target/Output: ' + escapeHtml(item.output) + '</div>' : '') +
+                            '</td>' +
+                            '<td class="py-3 px-4 text-right font-mono text-gray-700 font-semibold">' + bobotText + '</td>' +
                             '<td class="py-3 px-4 text-center">' +
                                 '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ' + badgeClass + '">' +
                                     '<i class="fa-solid ' + iconClass + ' text-[10px]"></i>' + escapeHtml(status) +
                                 '</span>' +
                             '</td>' +
-                            '<td class="py-3 px-4 text-right font-mono font-bold text-emerald-400">' + skorText + '</td>' +
+                            '<td class="py-3 px-4 text-right font-mono font-bold text-[#1b4d3e]">' + skorText + '</td>' +
                         '</tr>';
                     }).join('');
                 }
@@ -2090,7 +2077,7 @@
             const ctx = canvas.getContext('2d');
             ctx.scale(dpr, dpr);
 
-            // Background
+            // Clear background
             ctx.clearRect(0, 0, displayWidth, displayHeight);
 
             const padLeft = 40;
@@ -2102,7 +2089,7 @@
 
             // Grid lines
             const gridValues = [0, 25, 50, 75, 100];
-            ctx.strokeStyle = '#1e293b';
+            ctx.strokeStyle = '#f1f5f9';
             ctx.lineWidth = 1;
             ctx.fillStyle = '#64748b';
             ctx.font = '10px ui-monospace, SFMono-Regular, monospace';
@@ -2118,11 +2105,25 @@
                 ctx.fillText(String(val), padLeft - 8, y);
             });
 
+            // Benchmark 80 target line (dashed gold)
+            const targetY = padTop + plotH - (80 / 100) * plotH;
+            ctx.save();
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = 'rgba(212, 175, 55, 0.6)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(padLeft, targetY);
+            ctx.lineTo(displayWidth - padRight, targetY);
+            ctx.stroke();
+            ctx.fillStyle = '#b45309';
+            ctx.fillText('Target 80', displayWidth - padRight, targetY - 8);
+            ctx.restore();
+
             // Trend points (12 months)
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
             const dataPoints = months.map((m, idx) => {
                 const found = Array.isArray(monthlyTrend) ? monthlyTrend.find(item => item && (item.bulan === m || item.label === m || item.bulan === idx + 1)) : null;
-                const skor = found ? Number(found.skor || 0) : (monthlyTrend && monthlyTrend[idx] != null ? Number(monthlyTrend[idx].skor || 0) : 0);
+                const skor = found ? Number(found.skor || found.score || 0) : (monthlyTrend && monthlyTrend[idx] != null ? Number(monthlyTrend[idx].skor || monthlyTrend[idx].score || 0) : 0);
                 const x = padLeft + (idx / (months.length - 1)) * plotW;
                 const y = padTop + plotH - (Math.min(100, Math.max(0, skor)) / 100) * plotH;
                 return { x, y, skor, label: m };
@@ -2130,10 +2131,10 @@
 
             if (dataPoints.length < 2) return;
 
-            // Area fill gradient
+            // Area fill gradient (Katulistiwa Green)
             const areaGradient = ctx.createLinearGradient(0, padTop, 0, padTop + plotH);
-            areaGradient.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
-            areaGradient.addColorStop(1, 'rgba(16, 185, 129, 0.00)');
+            areaGradient.addColorStop(0, 'rgba(27, 77, 62, 0.22)');
+            areaGradient.addColorStop(1, 'rgba(27, 77, 62, 0.00)');
 
             ctx.beginPath();
             ctx.moveTo(dataPoints[0].x, dataPoints[0].y);
@@ -2149,7 +2150,7 @@
             ctx.fillStyle = areaGradient;
             ctx.fill();
 
-            // Line stroke
+            // Line stroke (Katulistiwa Green)
             ctx.beginPath();
             ctx.moveTo(dataPoints[0].x, dataPoints[0].y);
             for (let i = 0; i < dataPoints.length - 1; i++) {
@@ -2158,39 +2159,27 @@
                 const cpX = (p0.x + p1.x) / 2;
                 ctx.bezierCurveTo(cpX, p0.y, cpX, p1.y, p1.x, p1.y);
             }
-            ctx.strokeStyle = '#10b981';
+            ctx.strokeStyle = '#1b4d3e';
             ctx.lineWidth = 2.5;
-            ctx.shadowColor = 'rgba(16, 185, 129, 0.5)';
-            ctx.shadowBlur = 8;
             ctx.stroke();
-            ctx.shadowBlur = 0;
 
-            // Month labels and data dots
+            // Draw month labels & points
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
             dataPoints.forEach(p => {
                 // Month label
-                ctx.fillStyle = '#94a3b8';
-                ctx.font = '10px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'top';
+                ctx.fillStyle = '#64748b';
+                ctx.font = '10px ui-sans-serif, system-ui, sans-serif';
                 ctx.fillText(p.label, p.x, padTop + plotH + 8);
 
-                // Dot
+                // Point outer dot
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-                ctx.fillStyle = p.skor > 0 ? '#10b981' : '#334155';
+                ctx.arc(p.x, p.y, p.skor > 0 ? 4 : 2.5, 0, Math.PI * 2);
+                ctx.fillStyle = p.skor >= 80 ? '#1b4d3e' : (p.skor > 0 ? '#d4af37' : '#cbd5e1');
                 ctx.fill();
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = '#0b0f19';
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
                 ctx.stroke();
-
-                // Score text above point if > 0
-                if (p.skor > 0) {
-                    ctx.fillStyle = '#34d399';
-                    ctx.font = 'bold 9px ui-monospace, monospace';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'bottom';
-                    ctx.fillText(p.skor.toFixed(0), p.x, p.y - 6);
-                }
             });
         }
 

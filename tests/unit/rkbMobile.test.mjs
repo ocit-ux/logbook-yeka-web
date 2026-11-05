@@ -98,6 +98,59 @@ test('rkbApi: fetchRkbDataMobile dispatches POST request with action getRkbKarya
   assert.ok(memoryStore.has(cacheKey), 'Response must be cached in storage');
 });
 
+test('rkbApi: fetchRkbDataMobile unwraps wrapped GAS response format { status: "success", data: { ... } }', async () => {
+  const {
+    fetchRkbDataMobile,
+    setRkbHttpAdapter,
+    setRkbStorageAdapter
+  } = await import('../../apps/mobile/src/utils/rkbApi.js');
+
+  const mockHttp = {
+    post: async () => ({
+      data: {
+        status: 'success',
+        data: {
+          success: true,
+          found: true,
+          nama: 'Muhammad Abdul Rosyid',
+          divisi: 'Operasional',
+          bulan: 'Oktober',
+          tahun: 2026,
+          totalKpi: 100,
+          predikat: 'Sangat Baik',
+          statusKegiatan: { selesai: 9, proses: 0, belum: 0, total: 9 },
+          trenKpi: [],
+          activities: [
+            { kode: 'RN-01', kegiatan: 'Laporan Mangrove', bobot: 0.2, status: 'Selesai', skor: 1 }
+          ]
+        }
+      }
+    })
+  };
+
+  const memoryStore = new Map();
+  const mockStorage = {
+    getItem: async (key) => memoryStore.get(key) || null,
+    setItem: async (key, val) => memoryStore.set(key, String(val)),
+    removeItem: async (key) => memoryStore.delete(key)
+  };
+
+  setRkbHttpAdapter(mockHttp);
+  setRkbStorageAdapter(mockStorage);
+
+  const result = await fetchRkbDataMobile({
+    nama: 'Muhammad Abdul Rosyid',
+    divisi: 'Operasional',
+    bulan: 'Oktober',
+    tahun: 2026
+  });
+
+  assert.strictEqual(result.success, true);
+  assert.strictEqual(result.totalKpi, 100);
+  assert.strictEqual(result.predikat, 'Sangat Baik');
+  assert.strictEqual(result.activities.length, 1);
+});
+
 test('rkbApi: fetchRkbDataMobile falls back to cached data when network fails', async () => {
   const {
     fetchRkbDataMobile,

@@ -37,49 +37,6 @@ const MONTH_SHORT = [
   'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
 ];
 
-// Authentic template preview data from Google Sheets ID 1TQLqfzgPK-JHeNcjL3rSBcCit8t5Kj-b
-const SAMPLE_RKB_PREVIEW = {
-  success: true,
-  found: true,
-  nama: 'M. Abdud Rosyid',
-  divisi: 'Data & Informasi',
-  bulan: 'Oktober',
-  tahun: 2026,
-  totalKpi: 80.0,
-  predikat: 'Cukup',
-  statusKegiatan: {
-    selesai: 7,
-    proses: 1,
-    belum: 1,
-    total: 9
-  },
-  trenKpi: [
-    { bulan: 'Jan', score: 75 },
-    { bulan: 'Feb', score: 78 },
-    { bulan: 'Mar', score: 80 },
-    { bulan: 'Apr', score: 82 },
-    { bulan: 'Mei', score: 79 },
-    { bulan: 'Jun', score: 85 },
-    { bulan: 'Jul', score: 80 },
-    { bulan: 'Agu', score: 82 },
-    { bulan: 'Sep', score: 84 },
-    { bulan: 'Okt', score: 80 },
-    { bulan: 'Nov', score: 0 },
-    { bulan: 'Des', score: 0 }
-  ],
-  activities: [
-    { id: '1', kode: 'DI-01', kegiatan: 'Backup-Program PTS Bina Lingkungan 23-26', output: 'Thn 25-26', bobot: '10%', status: 'Selesai', skor: 10 },
-    { id: '2', kode: 'DI-01', kegiatan: 'Backup-Program PTS Mangrove 23-26', output: 'Thn 25-26', bobot: '10%', status: 'Selesai', skor: 10 },
-    { id: '3', kode: 'DI-01', kegiatan: 'Backup-Program Konservasi Air 25', output: 'Tahun 25', bobot: '5%', status: 'Selesai', skor: 5 },
-    { id: '4', kode: 'DI-02', kegiatan: 'Dummy Aplikasi Project Managemen YEKA', output: 'Menu Aplikasi Status Clear Internal', bobot: '20%', status: 'Selesai', skor: 14 },
-    { id: '5', kode: 'D1-02', kegiatan: 'Dummy Aplikasi EkoWacth', output: 'Menu Aplikasi Status Clear Internal', bobot: '20%', status: 'Proses', skor: 13 },
-    { id: '6', kode: 'DI-03', kegiatan: 'Publikasi Website & Medsos', output: 'Sesuai Program Berjalan & Laporan Pengunjung', bobot: '10%', status: 'Selesai', skor: 10 },
-    { id: '7', kode: 'DI-03', kegiatan: 'Flayer & Short Video', output: 'Hari Besar dan Video Story', bobot: '5%', status: 'Belum', skor: 0 },
-    { id: '8', kode: 'TM-01', kegiatan: 'Belajar Drone', output: 'Bisa Terbang dan Ambil Gambar Jarak 20m', bobot: '10%', status: 'Selesai', skor: 8 },
-    { id: '9', kode: 'TM-02', kegiatan: 'Perbaikan Logbook', output: 'ada fitur GPS tingkat Desa', bobot: '10%', status: 'Selesai', skor: 10 }
-  ]
-};
-
 export default function RkbScreen({ user, isAdmin = false, onBack }) {
   const { theme, isDark } = useTheme();
 
@@ -104,7 +61,6 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
   const [refreshing, setRefreshing] = useState(false);
   const [rkbData, setRkbData] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
-  const [isPendingGasDeployment, setIsPendingGasDeployment] = useState(false);
 
   // Fetch admin employee list once if admin
   useEffect(() => {
@@ -148,24 +104,8 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
       });
 
       setRkbData(res);
-      setIsPendingGasDeployment(false);
     } catch (err) {
-      const errMsg = String(err?.message || '');
-      // When GAS on Google Cloud hasn't been updated with getRkbKaryawan, gracefully fallback to authentic template preview
-      if (errMsg.includes('Unknown action') || errMsg.includes('getRkbKaryawan') || errMsg.includes('Network Error') || errMsg.includes('timeout')) {
-        setRkbData({
-          ...SAMPLE_RKB_PREVIEW,
-          nama: targetNama || SAMPLE_RKB_PREVIEW.nama,
-          divisi: targetDivisi || SAMPLE_RKB_PREVIEW.divisi,
-          bulan: selectedBulan,
-          tahun: selectedTahun
-        });
-        setIsPendingGasDeployment(true);
-        setErrorMsg('');
-      } else {
-        setErrorMsg(errMsg || 'Gagal memuat berkas RKB dari server.');
-        setIsPendingGasDeployment(false);
-      }
+      setErrorMsg(err?.message || 'Gagal memuat berkas RKB dari server.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -237,13 +177,13 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
     const raw = rkbData?.trenKpi || [];
     return MONTH_SHORT.map((shortName, idx) => {
       const found = raw.find((item) => {
-        const b = String(item.bulan || '').toLowerCase();
-        return b === shortName.toLowerCase() || b === MONTH_NAMES[idx].toLowerCase();
+        const b = String(item.bulan || item.namaBulan || '').toLowerCase();
+        return b === shortName.toLowerCase() || b === MONTH_NAMES[idx].toLowerCase() || item.month === idx + 1;
       });
       return {
         bulan: shortName,
         fullName: MONTH_NAMES[idx],
-        score: found ? Number(found.score) || 0 : 0
+        score: found ? Number(found.score !== undefined ? found.score : found.skor) || 0 : 0
       };
     });
   }, [rkbData?.trenKpi]);
@@ -265,7 +205,7 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Top Header - Katulistiwa Green */}
+      {/* Top Header: Katulistiwa Green */}
       <View style={[styles.header, { backgroundColor: theme.primary }]}>
         <View style={styles.headerLeft}>
           {onBack && (
@@ -381,23 +321,8 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
           />
         }
       >
-        {/* GAS Pending Deployment Advisory Banner */}
-        {isPendingGasDeployment && (
-          <View style={[styles.advisoryBanner, { backgroundColor: isDark ? 'rgba(212, 175, 55, 0.15)' : '#fefce8', borderColor: 'rgba(212, 175, 55, 0.45)' }]}>
-            <Ionicons name="information-circle" size={18} color="#b45309" style={{ marginRight: 8, marginTop: 1 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.advisoryBannerTitle, { color: '#b45309' }]}>
-                Data Pratinjau Template RKB YEKA
-              </Text>
-              <Text style={[styles.advisoryBannerText, { color: isDark ? '#d4af37' : '#92400e' }]}>
-                Backend GAS di Google Cloud belum diperbarui (action: getRkbKaryawan). Menampilkan data pratinjau template RKB aktif. Segera deploy versi baru di Google Apps Script.
-              </Text>
-            </View>
-          </View>
-        )}
-
         {/* Offline Cache Notice */}
-        {rkbData?.fromCache && !isPendingGasDeployment && (
+        {rkbData?.fromCache && (
           <View style={styles.offlineNotice}>
             <Ionicons name="cloud-offline-outline" size={15} color="#f59e0b" style={{ marginRight: 6 }} />
             <Text style={styles.offlineNoticeText}>
@@ -422,7 +347,7 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
           </View>
         )}
 
-        {/* 3 Executive Metric Cards */}
+        {/* 3 Executive Metric Cards with Gold Accent */}
         <View style={styles.metricsContainer}>
           {/* Card 1: TOTAL KPI BULAN INI */}
           <View style={[styles.metricCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -612,6 +537,22 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
                 const isSelesai = status.toLowerCase() === 'selesai' || status.toLowerCase() === 'terlaksana';
                 const isProses = status.toLowerCase() === 'proses';
 
+                let bobotDisplay = '0%';
+                if (act.bobot != null && act.bobot !== '') {
+                  const bNum = Number(act.bobot);
+                  if (!isNaN(bNum)) {
+                    bobotDisplay = (bNum <= 1 ? (bNum * 100).toFixed(0) : bNum.toFixed(0)) + '%';
+                  } else {
+                    bobotDisplay = String(act.bobot);
+                  }
+                }
+
+                let skorDisplay = '-';
+                if (act.skor != null && act.skor !== '') {
+                  const sNum = Number(act.skor);
+                  skorDisplay = !isNaN(sNum) ? sNum.toFixed(0) : String(act.skor);
+                }
+
                 return (
                   <View
                     key={act.id || `${kode}-${index}`}
@@ -632,12 +573,12 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
                       <View style={styles.activityMetaGroup}>
                         <View style={styles.metaPill}>
                           <Text style={[styles.metaPillLabel, { color: theme.textSecondary }]}>Bobot:</Text>
-                          <Text style={[styles.metaPillVal, { color: theme.text }]}>{act.bobot || '0%'}</Text>
+                          <Text style={[styles.metaPillVal, { color: theme.text }]}>{bobotDisplay}</Text>
                         </View>
                         <View style={styles.metaPill}>
                           <Text style={[styles.metaPillLabel, { color: theme.textSecondary }]}>Skor:</Text>
                           <Text style={[styles.metaPillVal, { color: isDark ? '#34d399' : theme.primary }]}>
-                            {act.skor !== undefined ? act.skor : '-'}
+                            {skorDisplay}
                           </Text>
                         </View>
                       </View>
@@ -941,24 +882,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 14
   },
-  advisoryBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 14
-  },
-  advisoryBannerTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    marginBottom: 2
-  },
-  advisoryBannerText: {
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: '500'
-  },
   offlineNotice: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1004,14 +927,16 @@ const styles = StyleSheet.create({
     marginBottom: 14
   },
   metricCard: {
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
+    borderTopWidth: 4,
+    borderTopColor: '#d4af37',
     padding: 16,
-    marginBottom: 10,
+    marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
     elevation: 2
   },
   metricHeaderRow: {
@@ -1132,14 +1057,16 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums']
   },
   sectionCard: {
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
+    borderTopWidth: 4,
+    borderTopColor: '#d4af37',
     padding: 16,
     marginBottom: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
     elevation: 2
   },
   sectionHeader: {
