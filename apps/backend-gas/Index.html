@@ -503,158 +503,167 @@
                 </div>
             </section>
             <section id="page-rkb-kpi" class="hidden space-y-6">
-                <div class="bg-[#0b0f19] text-slate-100 p-5 md:p-7 rounded-2xl border border-[#1e293b] shadow-2xl space-y-6">
-                    <!-- Header -->
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-[#1e293b]">
+                <!-- Header Card -->
+                <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <div class="flex items-center gap-2.5">
+                            <span class="relative flex h-3 w-3">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-3 w-3 bg-[#1b4d3e]"></span>
+                            </span>
+                            <h2 class="text-xl md:text-2xl font-black tracking-tight text-[#1b4d3e]">Dashboard KPI YEKA</h2>
+                        </div>
+                        <p id="rkb-header-subtitle" class="text-xs text-gray-500 mt-1">Memantau Kinerja Bulanan & Capaian RKB Personal</p>
+                    </div>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <span class="text-[11px] text-gray-500 font-mono tracking-wider">LAST UPDATED: <span id="rkb-last-updated" class="font-bold text-gray-700">-</span></span>
+                        <button onclick="loadRkbDashboard(true)" id="btn-refresh-rkb" class="px-3.5 py-1.5 rounded-xl bg-[#1b4d3e] hover:bg-[#153e32] text-white text-xs font-bold flex items-center gap-2 transition duration-150 shadow-sm">
+                            <i class="fa-solid fa-arrows-rotate text-[#d4af37]"></i>Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Advisory Banner (GAS Deployment Pending or Info) -->
+                <div id="rkb-advisory-banner" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-3 shadow-sm">
+                    <i class="fa-solid fa-circle-info text-amber-600 text-base mt-0.5"></i>
+                    <div>
+                        <div class="font-bold text-amber-950 mb-0.5" id="rkb-advisory-title">Data Pratinjau Template RKB YEKA</div>
+                        <div id="rkb-advisory-text" class="text-amber-800 leading-relaxed">Backend GAS di Google Cloud belum diperbarui (action: getRkbKaryawan). Menampilkan data pratinjau template RKB aktif. Segera deploy versi baru di Google Apps Script.</div>
+                    </div>
+                </div>
+
+                <!-- Filter Bar -->
+                <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                    <div class="flex items-center gap-2 flex-wrap flex-1">
+                        <div id="container-rkb-karyawan" class="hidden flex items-center gap-2 min-w-[220px]">
+                            <label for="select-rkb-karyawan" class="text-xs text-gray-600 font-bold whitespace-nowrap">Personel:</label>
+                            <select id="select-rkb-karyawan" onchange="loadRkbDashboard()" class="w-full bg-gray-50 text-gray-800 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#1b4d3e]">
+                                <option value="">Memuat personel...</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label for="select-rkb-bulan" class="text-xs text-gray-600 font-bold whitespace-nowrap">Bulan:</label>
+                            <select id="select-rkb-bulan" onchange="loadRkbDashboard()" class="bg-gray-50 text-gray-800 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#1b4d3e]">
+                                <option value="Januari">Januari</option>
+                                <option value="Februari">Februari</option>
+                                <option value="Maret">Maret</option>
+                                <option value="April">April</option>
+                                <option value="Mei">Mei</option>
+                                <option value="Juni">Juni</option>
+                                <option value="Juli">Juli</option>
+                                <option value="Agustus">Agustus</option>
+                                <option value="September">September</option>
+                                <option value="Oktober">Oktober</option>
+                                <option value="November">November</option>
+                                <option value="Desember">Desember</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label for="select-rkb-tahun" class="text-xs text-gray-600 font-bold whitespace-nowrap">Tahun:</label>
+                            <select id="select-rkb-tahun" onchange="loadRkbDashboard()" class="bg-gray-50 text-gray-800 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#1b4d3e]">
+                                <option value="2025">2025</option>
+                                <option value="2026" selected>2026</option>
+                                <option value="2027">2027</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="rkb-info-source" class="text-[11px] text-gray-400 italic text-right flex items-center justify-end gap-1.5">
+                        <i class="fa-brands fa-google-drive text-emerald-600"></i> Google Drive Folder RKB YEKA
+                    </div>
+                </div>
+
+                <!-- Top 3 Metric Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Card 1: Total KPI -->
+                    <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                        <div class="flex items-center justify-between text-xs text-gray-500 font-bold uppercase tracking-wider">
+                            <span>TOTAL KPI BULAN INI</span>
+                            <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#1b4d3e] border border-emerald-200 font-bold">Skor Capaian</span>
+                        </div>
+                        <div class="mt-3 flex items-baseline gap-2">
+                            <span id="rkb-metric-score" class="text-4xl sm:text-5xl font-black text-[#1b4d3e] font-mono">0.00</span>
+                            <span class="text-xs text-gray-400 font-medium">/ 100</span>
+                        </div>
+                        <p class="mt-2 text-[11px] text-gray-500 flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Real-time active metric
+                        </p>
+                    </div>
+
+                    <!-- Card 2: Predikat -->
+                    <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                        <div class="flex items-center justify-between text-xs text-gray-500 font-bold uppercase tracking-wider">
+                            <span>PREDIKAT</span>
+                            <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-50 text-[#b45309] border border-amber-200 font-bold">Evaluasi</span>
+                        </div>
+                        <div class="mt-3">
+                            <span id="rkb-metric-predikat" class="inline-block px-3.5 py-1.5 rounded-xl text-lg sm:text-xl font-bold bg-gray-100 text-gray-700 border border-gray-200">Sangat Kurang</span>
+                        </div>
+                        <p class="mt-2 text-[11px] text-gray-500 flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#d4af37]"></span>Target Min. 80.00 (Baik)
+                        </p>
+                    </div>
+
+                    <!-- Card 3: Status Kegiatan -->
+                    <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+                        <div class="flex items-center justify-between text-xs text-gray-500 font-bold uppercase tracking-wider">
+                            <span>STATUS KEGIATAN</span>
+                            <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold">Rincian</span>
+                        </div>
+                        <div class="mt-3 flex items-center gap-2 flex-wrap">
+                            <span id="rkb-badge-selesai" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
+                                <i class="fa-solid fa-circle-check text-[10px]"></i>0 Selesai
+                            </span>
+                            <span id="rkb-badge-proses" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 font-mono">
+                                <i class="fa-solid fa-spinner text-[10px]"></i>0 Proses
+                            </span>
+                            <span id="rkb-badge-belum" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 font-mono">
+                                <i class="fa-solid fa-circle-xmark text-[10px]"></i>0 Belum
+                            </span>
+                        </div>
+                        <p class="mt-2 text-[11px] text-gray-500 flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#1b4d3e]"></span>Ringkasan status pekerjaan
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Yearly Performance Curve -->
+                <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
                         <div>
-                            <div class="flex items-center gap-2.5">
-                                <span class="relative flex h-3 w-3">
-                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                                </span>
-                                <h2 class="text-xl md:text-2xl font-black tracking-tight text-white">Dashboard KPI YEKA</h2>
-                            </div>
-                            <p id="rkb-header-subtitle" class="text-xs text-slate-400 mt-1">Memantau Kinerja Bulanan & Capaian RKB Personal</p>
+                            <h3 class="text-sm font-bold text-[#1b4d3e]">Tren KPI Tahunan</h3>
+                            <p class="text-[11px] text-gray-500 mt-0.5">Grafik capaian skor performa Jan s.d. Des</p>
                         </div>
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <span class="text-[11px] text-slate-500 font-mono tracking-wider">LAST UPDATED: <span id="rkb-last-updated" class="text-slate-300">-</span></span>
-                            <button onclick="loadRkbDashboard(true)" id="btn-refresh-rkb" class="px-3.5 py-1.5 rounded-xl bg-[#131b2e] hover:bg-[#1e293b] text-slate-200 border border-[#1e293b] hover:border-slate-600 text-xs font-semibold flex items-center gap-2 transition duration-150">
-                                <i class="fa-solid fa-arrows-rotate text-emerald-400"></i>Refresh
-                            </button>
-                        </div>
+                        <span class="text-[10px] px-2.5 py-1 rounded-full bg-emerald-50 text-[#1b4d3e] border border-emerald-200 font-bold uppercase tracking-wider">Performance Curve</span>
                     </div>
-
-                    <!-- Filter Bar -->
-                    <div class="bg-[#131b2e] border border-[#1e293b] rounded-xl p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-                        <div class="flex items-center gap-2 flex-wrap flex-1">
-                            <div id="container-rkb-karyawan" class="hidden flex items-center gap-2 min-w-[200px]">
-                                <label for="select-rkb-karyawan" class="text-xs text-slate-400 font-medium whitespace-nowrap">Personel:</label>
-                                <select id="select-rkb-karyawan" onchange="loadRkbDashboard()" class="w-full bg-[#0b0f19] text-slate-200 border border-[#1e293b] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
-                                    <option value="">Memuat personel...</option>
-                                </select>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <label for="select-rkb-bulan" class="text-xs text-slate-400 font-medium whitespace-nowrap">Bulan:</label>
-                                <select id="select-rkb-bulan" onchange="loadRkbDashboard()" class="bg-[#0b0f19] text-slate-200 border border-[#1e293b] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
-                                    <option value="Januari">Januari</option>
-                                    <option value="Februari">Februari</option>
-                                    <option value="Maret">Maret</option>
-                                    <option value="April">April</option>
-                                    <option value="Mei">Mei</option>
-                                    <option value="Juni">Juni</option>
-                                    <option value="Juli">Juli</option>
-                                    <option value="Agustus">Agustus</option>
-                                    <option value="September">September</option>
-                                    <option value="Oktober">Oktober</option>
-                                    <option value="November">November</option>
-                                    <option value="Desember">Desember</option>
-                                </select>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <label for="select-rkb-tahun" class="text-xs text-slate-400 font-medium whitespace-nowrap">Tahun:</label>
-                                <select id="select-rkb-tahun" onchange="loadRkbDashboard()" class="bg-[#0b0f19] text-slate-200 border border-[#1e293b] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
-                                    <option value="2025">2025</option>
-                                    <option value="2026" selected>2026</option>
-                                    <option value="2027">2027</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div id="rkb-info-source" class="text-[11px] text-slate-400 italic text-right">
-                            Google Drive Folder RKB YEKA
-                        </div>
+                    <div class="w-full relative overflow-hidden" style="height: 220px;">
+                        <canvas id="chart-rkb-tren" class="w-full h-full block"></canvas>
                     </div>
+                </div>
 
-                    <!-- Top 3 Metric Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <!-- Card 1: Total KPI -->
-                        <div class="bg-[#131b2e] border border-[#1e293b] rounded-2xl p-5 shadow-lg relative overflow-hidden">
-                            <div class="flex items-center justify-between text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                                <span>TOTAL KPI BULAN INI</span>
-                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">Score</span>
-                            </div>
-                            <div class="mt-3 flex items-baseline gap-2">
-                                <span id="rkb-metric-score" class="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 font-mono">0.00</span>
-                                <span class="text-xs text-slate-400 font-medium">/ 100</span>
-                            </div>
-                            <p class="mt-2 text-[11px] text-slate-400 flex items-center gap-1.5">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Real-time active metric
-                            </p>
+                <!-- Activities Overview Table -->
+                <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-bold text-[#1b4d3e]">Detail Rencana & Realisasi Kegiatan</h3>
+                            <p class="text-[11px] text-gray-500 mt-0.5">Daftar item RKB bulanan beserta bobot dan progres skor</p>
                         </div>
-
-                        <!-- Card 2: Predikat -->
-                        <div class="bg-[#131b2e] border border-[#1e293b] rounded-2xl p-5 shadow-lg relative overflow-hidden">
-                            <div class="flex items-center justify-between text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                                <span>PREDIKAT</span>
-                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">Status</span>
-                            </div>
-                            <div class="mt-3">
-                                <span id="rkb-metric-predikat" class="inline-block px-3 py-1.5 rounded-xl text-lg sm:text-xl font-bold bg-slate-800 text-slate-200 border border-slate-700">Sangat Kurang</span>
-                            </div>
-                            <p class="mt-2 text-[11px] text-slate-400 flex items-center gap-1.5">
-                                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>Evaluasi Capaian
-                            </p>
-                        </div>
-
-                        <!-- Card 3: Status Kegiatan -->
-                        <div class="bg-[#131b2e] border border-[#1e293b] rounded-2xl p-5 shadow-lg relative overflow-hidden">
-                            <div class="flex items-center justify-between text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                                <span>STATUS KEGIATAN</span>
-                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold">Tasks</span>
-                            </div>
-                            <div class="mt-3 flex items-center gap-2 flex-wrap">
-                                <span id="rkb-badge-selesai" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-mono">
-                                    <i class="fa-solid fa-circle-check text-[10px]"></i>0 Selesai
-                                </span>
-                                <span id="rkb-badge-proses" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 font-mono">
-                                    <i class="fa-solid fa-spinner text-[10px]"></i>0 Proses
-                                </span>
-                                <span id="rkb-badge-belum" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30 font-mono">
-                                    <i class="fa-solid fa-circle-xmark text-[10px]"></i>0 Belum
-                                </span>
-                            </div>
-                            <p class="mt-2 text-[11px] text-slate-400 flex items-center gap-1.5">
-                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>Ringkasan status pekerjaan
-                            </p>
-                        </div>
+                        <span class="text-[10px] px-2.5 py-1 rounded-full bg-amber-50 text-[#b45309] border border-amber-200 font-bold uppercase tracking-wider">Activities Overview</span>
                     </div>
-
-                    <!-- Yearly Performance Curve -->
-                    <div class="bg-[#131b2e] border border-[#1e293b] rounded-2xl p-5 shadow-lg">
-                        <div class="flex items-center justify-between mb-4">
-                            <div>
-                                <h3 class="text-sm font-bold text-slate-200">Tren KPI Tahunan</h3>
-                                <p class="text-[11px] text-slate-400 mt-0.5">Grafik capaian skor performa Jan s.d. Des</p>
-                            </div>
-                            <span class="text-[10px] px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold uppercase tracking-wider">Performance Curve</span>
-                        </div>
-                        <div class="w-full relative overflow-hidden" style="height: 220px;">
-                            <canvas id="chart-rkb-tren" class="w-full h-full block"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Activities Overview Table -->
-                    <div class="bg-[#131b2e] border border-[#1e293b] rounded-2xl p-5 shadow-lg">
-                        <div class="flex items-center justify-between mb-4">
-                            <div>
-                                <h3 class="text-sm font-bold text-slate-200">Detail Rencana & Realisasi Kegiatan</h3>
-                                <p class="text-[11px] text-slate-400 mt-0.5">Daftar item RKB bulanan beserta bobot dan progres skor</p>
-                            </div>
-                            <span class="text-[10px] px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold uppercase tracking-wider">Activities Overview</span>
-                        </div>
-                        <div class="overflow-x-auto rounded-xl border border-[#1e293b]">
-                            <table class="w-full text-left text-xs border-collapse">
+                    <div class="ent-card">
+                        <div class="ent-scroll">
+                            <table class="ent-table min-w-[900px]">
                                 <thead>
-                                    <tr class="bg-[#0b0f19] text-slate-400 uppercase text-[10.5px] font-bold tracking-wider border-b border-[#1e293b]">
-                                        <th class="py-3 px-4">KODE</th>
-                                        <th class="py-3 px-4">KEGIATAN</th>
-                                        <th class="py-3 px-4 text-right">BOBOT</th>
-                                        <th class="py-3 px-4 text-center">STATUS</th>
-                                        <th class="py-3 px-4 text-right">SKOR</th>
+                                    <tr>
+                                        <th style="min-width: 90px;"><i class="fa-solid fa-barcode mr-1.5 text-emerald-300"></i>KODE</th>
+                                        <th style="min-width: 320px;"><i class="fa-solid fa-list-check mr-1.5 text-emerald-300"></i>KEGIATAN</th>
+                                        <th style="min-width: 90px; text-align: right;"><i class="fa-solid fa-percent mr-1.5 text-emerald-300"></i>BOBOT</th>
+                                        <th style="min-width: 120px; text-align: center;"><i class="fa-solid fa-circle-check mr-1.5 text-emerald-300"></i>STATUS</th>
+                                        <th style="min-width: 90px; text-align: right;"><i class="fa-solid fa-award mr-1.5 text-emerald-300"></i>SKOR</th>
                                     </tr>
                                 </thead>
-                                <tbody id="table-rkb-kegiatan" class="divide-y divide-[#1e293b] text-slate-300">
+                                <tbody id="table-rkb-kegiatan" class="divide-y divide-gray-100">
                                     <tr>
-                                        <td colspan="5" class="py-6 text-center text-slate-500 italic">Memuat kegiatan RKB...</td>
+                                        <td colspan="5" class="py-6 text-center text-gray-400 italic">Memuat kegiatan RKB...</td>
                                     </tr>
                                 </tbody>
                             </table>

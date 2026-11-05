@@ -209,6 +209,62 @@ test('parseRkbSheetRows extracts activities and converts percentages and status'
   assert.strictEqual(activities[1].status, 'Proses');
 });
 
+test('parseRkbSheetRows and extractRkbRekapKpi handle authentic YEKA RKB spreadsheet format', () => {
+  assert.ok(rkbService);
+  const { parseRkbSheetRows, extractRkbRekapKpi, calculateRkbMetrics } = rkbService;
+
+  const yekaSpreadsheetRows = [
+    ['SISTEM RKB (RENCANA KERJA BULANAN) TIM', '', '', '', ''],
+    ['', '', '', '', ''],
+    ['A.1. IDENTITAS PEGAWAI', '', '', 'A.2. DAFTAR KODE TUGAS', ''],
+    ['Nama Pegawai', '', 'M. Abdud Rosyid', '', ''],
+    ['Kode Grade', '', 'OP-2A', '', ''],
+    ['Divisi', '', 'Data & Informasi', '', ''],
+    ['Proyek', '', '-', '', ''],
+    ['Jabatan', '', 'Anggota', '', ''],
+    ['Bulan / Tahun', '', 'Oktober 2026', '', ''],
+    ['Total HOK', '', '20', '', ''],
+    ['', '', '', '', ''],
+    ['B. TABEL KEGIATAN', '', '', '', ''],
+    ['IDENTITAS KEGIATAN', '', '', 'RENCANA', 'TIMELINE'],
+    ['No', 'Kode', 'Kegiatan', 'Jenis', 'Output / Indikator', 'Estimasi HOK', 'Bobot %', 'M1', 'M2', 'M3', 'M4', 'Tanggal Realisasi', 'Status Pelaksanaan', 'Eviden', 'Komplain', 'Skor Pelaksanaan', 'Skor Eviden', 'Skor Komplain', 'Skor Gabungan', 'Bobot x Skor (KPI)'],
+    ['A. KEGIATAN UTAMA (80%)', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+    ['1', 'DI-01', 'Backup Program Smelting & Cargill', '* Utama', 'Thn 25-26', '2', '10,00%', 'X', 'X', 'X', 'X', '1-31 Agt', 'Terlaksana', 'Ada', 'Tidak Ada', '1,00', '1,00', '1,00', '1,00', '10,00%'],
+    ['2', 'DI-02', 'Dummy Aplikasi Project Managemen YEKA', '* Utama', 'Menu Aplikasi Status Clear', '4', '20,00%', 'X', 'X', 'X', 'X', '10-20 Agt', 'Terlaksana', 'Ada', 'Tidak Ada', '1,00', '1,00', '1,00', '1,00', '20,00%'],
+    ['3', 'DI-02', 'Dummy Aplikasi EkoWacth', '* Utama', 'Menu Aplikasi Status Clear', '4', '20,00%', 'X', 'X', 'X', 'X', '15-30 Agt', 'Proses', 'Ada', 'Tidak Ada', '0,50', '1,00', '1,00', '0,65', '13,00%'],
+    ['4', 'DI-03', 'Flayer & Short Video', '* Utama', 'Hari Besar dan Video Story', '1', '5,00%', 'X', 'X', 'X', 'X', '', 'Belum', 'Tidak Ada', 'Ada', '0,00', '0,00', '0,00', '0,00', '0,00%'],
+    ['Subtotal Utama', '', '', '', '', '16', '80,00%', '', '', '', '', '', '', '', '', '', '', '', '', '62,00%'],
+    ['B. TUGAS MANAJEMEN (20%)', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+    ['5', 'TM-01', 'Belajar Drone', 'Manajemen', 'Bisa Terbang dan Ambil Gambar Jarak 20m', '2', '10,00%', 'X', 'X', 'X', 'X', 'Mingguan', 'Terlaksana', 'Tidak Ada', 'Tidak Ada', '1,00', '0,00', '1,00', '0,80', '8,00%'],
+    ['Subtotal Manajemen', '', '', '', '', '4', '20,00%', '', '', '', '', '', '', '', '', '', '', '', '', '18,00%'],
+    ['TOTAL', '', '', '', '', '20', '100,00%', '', '', '', '', '', '', '', '', '', '', '', '', '80,00%'],
+    ['', '', '', '', ''],
+    ['D. REKAP KPI BULANAN', '', '', '', ''],
+    ['TOTAL KPI', '', '', '', '', '', '', '', '100%', '80,00'],
+    ['Predikat', '', '', '', '', '', '', '', '', 'Cukup']
+  ];
+
+  const activities = parseRkbSheetRows(yekaSpreadsheetRows);
+  assert.strictEqual(activities.length, 5);
+  assert.strictEqual(activities[0].kode, 'DI-01');
+  assert.strictEqual(activities[0].status, 'Selesai');
+  assert.strictEqual(activities[0].output, 'Thn 25-26');
+  assert.strictEqual(activities[2].status, 'Proses');
+  assert.strictEqual(activities[3].status, 'Belum');
+
+  const rekap = extractRkbRekapKpi(yekaSpreadsheetRows);
+  assert.ok(rekap);
+  assert.strictEqual(rekap.totalKpi, 80);
+  assert.strictEqual(rekap.predikat, 'Cukup');
+
+  const metrics = calculateRkbMetrics(activities, rekap);
+  assert.strictEqual(metrics.totalKpi, 80);
+  assert.strictEqual(metrics.predikat, 'Cukup');
+  assert.strictEqual(metrics.statusKegiatan.selesai, 3);
+  assert.strictEqual(metrics.statusKegiatan.proses, 1);
+  assert.strictEqual(metrics.statusKegiatan.belum, 1);
+});
+
 test('Code.gs source code integration contract for RKB service', () => {
   const codePath = path.resolve(__dirname, '../../apps/backend-gas/Code.gs');
   assert.strictEqual(fs.existsSync(codePath), true);

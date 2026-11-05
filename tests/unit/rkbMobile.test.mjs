@@ -202,10 +202,9 @@ test('RkbScreen source code static contract: executive dark theme and core layou
     'RkbScreen must export default function component'
   );
 
-  // Executive Dark Theme palette
-  assert.ok(content.includes('#0b0f19'), 'Must use executive dark background #0b0f19');
-  assert.ok(content.includes('#131b2e'), 'Must use card container background #131b2e');
-  assert.ok(content.includes('#1e293b'), 'Must use border color #1e293b');
+  // Katulistiwa Green & Executive Gold Theme palette
+  assert.ok(content.includes('#1b4d3e'), 'Must use Katulistiwa primary green #1b4d3e');
+  assert.ok(content.includes('#d4af37'), 'Must use Executive gold #d4af37');
 
   // Header and title
   assert.ok(

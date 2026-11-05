@@ -34,7 +34,7 @@ function evaluatePredikat(score) {
  * @param {Array<Object>} activities
  * @returns {Object} { totalKpi, predikat, statusKegiatan: { selesai, proses, belum, total } }
  */
-function calculateRkbMetrics(activities) {
+function calculateRkbMetrics(activities, precalculatedKpi) {
   var emptyResult = {
     totalKpi: 0,
     predikat: 'Sangat Kurang',
@@ -42,6 +42,13 @@ function calculateRkbMetrics(activities) {
   };
 
   if (!activities || !Array.isArray(activities) || activities.length === 0) {
+    if (precalculatedKpi && precalculatedKpi.totalKpi !== undefined) {
+      return {
+        totalKpi: precalculatedKpi.totalKpi,
+        predikat: precalculatedKpi.predikat || evaluatePredikat(precalculatedKpi.totalKpi),
+        statusKegiatan: { selesai: 0, proses: 0, belum: 0, total: 0 }
+      };
+    }
     return emptyResult;
   }
 
@@ -58,7 +65,7 @@ function calculateRkbMetrics(activities) {
     var statusRaw = String(item.status || '').trim().toLowerCase();
 
     var status = 'Belum';
-    if (statusRaw === 'selesai' || statusRaw === 'done' || statusRaw === '100%') {
+    if (statusRaw === 'selesai' || statusRaw === 'terlaksana' || statusRaw === 'done' || statusRaw === '100%') {
       status = 'Selesai';
       selesaiCount++;
     } else if (statusRaw === 'proses' || statusRaw === 'progress' || statusRaw === 'sedang berjalan' || statusRaw === '50%') {
@@ -93,7 +100,9 @@ function calculateRkbMetrics(activities) {
   }
 
   var totalKpi = 0;
-  if (totalWeight > 0) {
+  if (precalculatedKpi && precalculatedKpi.totalKpi !== undefined && !isNaN(Number(precalculatedKpi.totalKpi))) {
+    totalKpi = Number(precalculatedKpi.totalKpi);
+  } else if (totalWeight > 0) {
     if (totalWeight > 1.5) {
       // Bobot was expressed in percentage points (e.g. sum is ~100)
       totalKpi = weightedScoreSum / 100;
@@ -109,9 +118,13 @@ function calculateRkbMetrics(activities) {
   // Round to two decimal places
   totalKpi = Math.round(totalKpi * 100) / 100;
 
+  var finalPredikat = (precalculatedKpi && precalculatedKpi.predikat)
+    ? precalculatedKpi.predikat
+    : evaluatePredikat(totalKpi);
+
   return {
     totalKpi: totalKpi,
-    predikat: evaluatePredikat(totalKpi),
+    predikat: finalPredikat,
     statusKegiatan: {
       selesai: selesaiCount,
       proses: prosesCount,
@@ -249,6 +262,53 @@ function matchEmployeeRkbFile(files, employeeName, division) {
 }
 
 /**
+ * Extracts precalculated KPI summary from Section D of an RKB sheet if present.
+ *
+ * @param {Array<Array>} rows
+ * @returns {Object|null} { totalKpi, predikat }
+ */
+function extractRkbRekapKpi(rows) {
+  if (!rows || !Array.isArray(rows) || rows.length === 0) return null;
+  var totalKpi = null;
+  var predikat = null;
+
+  for (var r = 0; r < rows.length; r++) {
+    var row = rows[r];
+    if (!Array.isArray(row)) continue;
+    var firstCol = String(row[0] || '').trim().toUpperCase();
+
+    if (firstCol.indexOf('TOTAL KPI') !== -1) {
+      for (var c = row.length - 1; c >= 1; c--) {
+        var val = String(row[c] || '').replace(/["%]/g, '').replace(',', '.').trim();
+        var num = parseFloat(val);
+        if (!isNaN(num) && num > 0) {
+          totalKpi = num;
+          break;
+        }
+      }
+    }
+
+    if (firstCol.indexOf('PREDIKAT') !== -1) {
+      for (var c = row.length - 1; c >= 1; c--) {
+        var str = String(row[c] || '').replace(/"/g, '').trim();
+        if (str && str.length >= 4 && isNaN(Number(str))) {
+          predikat = str;
+          break;
+        }
+      }
+    }
+  }
+
+  if (totalKpi !== null) {
+    return {
+      totalKpi: totalKpi,
+      predikat: predikat || evaluatePredikat(totalKpi)
+    };
+  }
+  return null;
+}
+
+/**
  * Parses 2D array of rows from an RKB sheet.
  *
  * @param {Array<Array>} rows 2D array from sheet.getDataRange().getValues()
@@ -265,20 +325,31 @@ function parseRkbSheetRows(rows, headers) {
     resolvedHeaders = headers;
     headerRowIdx = -1;
   } else {
-    // Scan up to first 10 rows to detect header row
-    var maxScan = Math.min(rows.length, 10);
+    // Scan up to first 30 rows to detect exact header row
+    var maxScan = Math.min(rows.length, 30);
     for (var r = 0; r < maxScan; r++) {
       var candidate = rows[r];
       if (!Array.isArray(candidate)) continue;
 
-      var lineText = candidate.map(function(c) { return String(c || '').toLowerCase(); }).join(' ');
-      var hasKegiatan = lineText.indexOf('kegiatan') !== -1 || lineText.indexOf('rencana') !== -1 || lineText.indexOf('uraian') !== -1 || lineText.indexOf('program') !== -1;
-      var hasOther = lineText.indexOf('bobot') !== -1 || lineText.indexOf('status') !== -1 || lineText.indexOf('kode') !== -1 || lineText.indexOf('skor') !== -1;
+      var lineTokens = candidate.map(function(c) { return String(c || '').toLowerCase().trim(); });
+      var hasExactKode = lineTokens.some(function(c) { return c === 'kode' || c === 'no kode'; });
+      var hasExactKegiatan = lineTokens.some(function(c) { return c === 'kegiatan'; });
+      var hasExactBobot = lineTokens.some(function(c) { return c.indexOf('bobot') !== -1; });
+      var hasExactStatus = lineTokens.some(function(c) { return c.indexOf('status') !== -1; });
 
-      if (hasKegiatan && hasOther) {
+      if (hasExactKode && hasExactKegiatan && (hasExactBobot || hasExactStatus)) {
         headerRowIdx = r;
         resolvedHeaders = candidate;
         break;
+      }
+
+      var lineText = lineTokens.join(' ');
+      var hasKegiatan = lineText.indexOf('kegiatan') !== -1 || lineText.indexOf('rencana') !== -1 || lineText.indexOf('uraian') !== -1 || lineText.indexOf('program') !== -1;
+      var hasOther = lineText.indexOf('bobot') !== -1 || lineText.indexOf('status') !== -1 || lineText.indexOf('kode') !== -1 || lineText.indexOf('skor') !== -1;
+
+      if (hasKegiatan && hasOther && headerRowIdx === -1) {
+        headerRowIdx = r;
+        resolvedHeaders = candidate;
       }
     }
   }
@@ -297,6 +368,7 @@ function parseRkbSheetRows(rows, headers) {
   // Identify column indices
   var kodeIdx = -1;
   var kegiatanIdx = -1;
+  var outputIdx = -1;
   var bobotIdx = -1;
   var statusIdx = -1;
   var skorIdx = -1;
@@ -305,8 +377,10 @@ function parseRkbSheetRows(rows, headers) {
     var h = String(resolvedHeaders[c] || '').trim().toLowerCase();
     if (kodeIdx === -1 && (h === 'kode' || h === 'no kode' || h === 'id' || h === 'kd')) {
       kodeIdx = c;
-    } else if (kegiatanIdx === -1 && (h.indexOf('kegiatan') !== -1 || h.indexOf('rencana') !== -1 || h.indexOf('uraian') !== -1 || h.indexOf('program') !== -1)) {
+    } else if (kegiatanIdx === -1 && (h === 'kegiatan' || h.indexOf('kegiatan') !== -1 || h.indexOf('rencana') !== -1 || h.indexOf('uraian') !== -1 || h.indexOf('program') !== -1)) {
       kegiatanIdx = c;
+    } else if (outputIdx === -1 && (h.indexOf('output') !== -1 || h.indexOf('indikator') !== -1 || h.indexOf('hasil') !== -1)) {
+      outputIdx = c;
     } else if (bobotIdx === -1 && (h.indexOf('bobot') !== -1 || h.indexOf('weight') !== -1 || h === '%' || h.indexOf('persen') !== -1)) {
       bobotIdx = c;
     } else if (statusIdx === -1 && (h.indexOf('status') !== -1 || h.indexOf('kondisi') !== -1)) {
@@ -331,21 +405,29 @@ function parseRkbSheetRows(rows, headers) {
     var kegiatan = String(row[kegiatanIdx] !== undefined ? row[kegiatanIdx] : '').trim();
     if (!kegiatan) continue;
 
-    var kode = kodeIdx !== -1 && row[kodeIdx] ? String(row[kodeIdx]).trim() : ('ACT-' + (activities.length + 1));
+    var rawKode = kodeIdx !== -1 && row[kodeIdx] ? String(row[kodeIdx]).trim() : '';
+    // Skip section headers and summary rows
+    if (/^(subtotal|total|a\.|b\.|c\.|d\.|e\.)/i.test(kegiatan)) continue;
+    if (/^(subtotal|total|a\.|b\.|c\.|d\.|e\.)/i.test(rawKode)) continue;
+    if (!rawKode && (row[bobotIdx] === undefined || row[bobotIdx] === '')) continue;
+
+    var kode = rawKode || ('ACT-' + (activities.length + 1));
+    var output = outputIdx !== -1 && row[outputIdx] ? String(row[outputIdx]).replace(/"/g, '').trim() : '';
 
     // Parse bobot
     var rawBobot = row[bobotIdx];
     var bobot = 0;
     if (typeof rawBobot === 'string' && rawBobot.indexOf('%') !== -1) {
-      bobot = parseFloat(rawBobot) / 100;
+      bobot = parseFloat(rawBobot.replace(/,/g, '.')) / 100;
     } else if (rawBobot !== undefined && rawBobot !== null && rawBobot !== '') {
-      bobot = parseFloat(rawBobot) || 0;
+      var parsedNum = parseFloat(String(rawBobot).replace(/,/g, '.'));
+      bobot = isNaN(parsedNum) ? 0 : parsedNum;
     }
 
     // Normalize status
     var rawStatus = String(row[statusIdx] !== undefined ? row[statusIdx] : '').trim().toLowerCase();
     var status = 'Belum';
-    if (rawStatus === 'selesai' || rawStatus === 'done' || rawStatus === '100%') {
+    if (rawStatus === 'selesai' || rawStatus === 'terlaksana' || rawStatus === 'done' || rawStatus === '100%') {
       status = 'Selesai';
     } else if (rawStatus === 'proses' || rawStatus === 'progress' || rawStatus === '50%') {
       status = 'Proses';
@@ -356,8 +438,8 @@ function parseRkbSheetRows(rows, headers) {
     // Parse skor
     var rawSkor = row[skorIdx];
     var skor = 0;
-    if (rawSkor !== undefined && rawSkor !== null && rawSkor !== '' && !isNaN(Number(rawSkor))) {
-      skor = Number(rawSkor);
+    if (rawSkor !== undefined && rawSkor !== null && rawSkor !== '' && !isNaN(Number(String(rawSkor).replace(/,/g, '.')))) {
+      skor = Number(String(rawSkor).replace(/,/g, '.'));
     } else {
       skor = status === 'Selesai' ? 100 : (status === 'Proses' ? 50 : 0);
     }
@@ -365,6 +447,7 @@ function parseRkbSheetRows(rows, headers) {
     activities.push({
       kode: kode,
       kegiatan: kegiatan,
+      output: output,
       bobot: bobot,
       status: status,
       skor: skor
@@ -381,6 +464,7 @@ if (typeof module !== 'undefined' && module.exports) {
     calculateRkbMetrics: calculateRkbMetrics,
     parseYearlyKpiTrend: parseYearlyKpiTrend,
     matchEmployeeRkbFile: matchEmployeeRkbFile,
-    parseRkbSheetRows: parseRkbSheetRows
+    parseRkbSheetRows: parseRkbSheetRows,
+    extractRkbRekapKpi: extractRkbRekapKpi
   };
 }

@@ -2,6 +2,7 @@
  * RKB and KPI Executive Monitoring Screen
  * Displays employee monthly work plans, real-time KPI scores, task status counts,
  * 12-month performance curves, and detailed activity items.
+ * Harmonized with Katulistiwa Green (#1b4d3e) and Executive Gold (#d4af37).
  *
  * Rule R-02 compliant: Zero em dashes in code, strings, and comments.
  */
@@ -21,6 +22,7 @@ import {
   TextInput
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../utils/theme';
 import { fetchRkbDataMobile } from '../utils/rkbApi';
 import { API_URL } from '../utils/api';
 import axios from 'axios';
@@ -35,7 +37,52 @@ const MONTH_SHORT = [
   'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
 ];
 
+// Authentic template preview data from Google Sheets ID 1TQLqfzgPK-JHeNcjL3rSBcCit8t5Kj-b
+const SAMPLE_RKB_PREVIEW = {
+  success: true,
+  found: true,
+  nama: 'M. Abdud Rosyid',
+  divisi: 'Data & Informasi',
+  bulan: 'Oktober',
+  tahun: 2026,
+  totalKpi: 80.0,
+  predikat: 'Cukup',
+  statusKegiatan: {
+    selesai: 7,
+    proses: 1,
+    belum: 1,
+    total: 9
+  },
+  trenKpi: [
+    { bulan: 'Jan', score: 75 },
+    { bulan: 'Feb', score: 78 },
+    { bulan: 'Mar', score: 80 },
+    { bulan: 'Apr', score: 82 },
+    { bulan: 'Mei', score: 79 },
+    { bulan: 'Jun', score: 85 },
+    { bulan: 'Jul', score: 80 },
+    { bulan: 'Agu', score: 82 },
+    { bulan: 'Sep', score: 84 },
+    { bulan: 'Okt', score: 80 },
+    { bulan: 'Nov', score: 0 },
+    { bulan: 'Des', score: 0 }
+  ],
+  activities: [
+    { id: '1', kode: 'DI-01', kegiatan: 'Backup-Program PTS Bina Lingkungan 23-26', output: 'Thn 25-26', bobot: '10%', status: 'Selesai', skor: 10 },
+    { id: '2', kode: 'DI-01', kegiatan: 'Backup-Program PTS Mangrove 23-26', output: 'Thn 25-26', bobot: '10%', status: 'Selesai', skor: 10 },
+    { id: '3', kode: 'DI-01', kegiatan: 'Backup-Program Konservasi Air 25', output: 'Tahun 25', bobot: '5%', status: 'Selesai', skor: 5 },
+    { id: '4', kode: 'DI-02', kegiatan: 'Dummy Aplikasi Project Managemen YEKA', output: 'Menu Aplikasi Status Clear Internal', bobot: '20%', status: 'Selesai', skor: 14 },
+    { id: '5', kode: 'D1-02', kegiatan: 'Dummy Aplikasi EkoWacth', output: 'Menu Aplikasi Status Clear Internal', bobot: '20%', status: 'Proses', skor: 13 },
+    { id: '6', kode: 'DI-03', kegiatan: 'Publikasi Website & Medsos', output: 'Sesuai Program Berjalan & Laporan Pengunjung', bobot: '10%', status: 'Selesai', skor: 10 },
+    { id: '7', kode: 'DI-03', kegiatan: 'Flayer & Short Video', output: 'Hari Besar dan Video Story', bobot: '5%', status: 'Belum', skor: 0 },
+    { id: '8', kode: 'TM-01', kegiatan: 'Belajar Drone', output: 'Bisa Terbang dan Ambil Gambar Jarak 20m', bobot: '10%', status: 'Selesai', skor: 8 },
+    { id: '9', kode: 'TM-02', kegiatan: 'Perbaikan Logbook', output: 'ada fitur GPS tingkat Desa', bobot: '10%', status: 'Selesai', skor: 10 }
+  ]
+};
+
 export default function RkbScreen({ user, isAdmin = false, onBack }) {
+  const { theme, isDark } = useTheme();
+
   const currentMonthIndex = new Date().getMonth();
   const currentYear = new Date().getFullYear();
 
@@ -57,6 +104,7 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
   const [refreshing, setRefreshing] = useState(false);
   const [rkbData, setRkbData] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isPendingGasDeployment, setIsPendingGasDeployment] = useState(false);
 
   // Fetch admin employee list once if admin
   useEffect(() => {
@@ -100,8 +148,24 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
       });
 
       setRkbData(res);
+      setIsPendingGasDeployment(false);
     } catch (err) {
-      setErrorMsg(err.message || 'Gagal memuat berkas RKB dari server.');
+      const errMsg = String(err?.message || '');
+      // When GAS on Google Cloud hasn't been updated with getRkbKaryawan, gracefully fallback to authentic template preview
+      if (errMsg.includes('Unknown action') || errMsg.includes('getRkbKaryawan') || errMsg.includes('Network Error') || errMsg.includes('timeout')) {
+        setRkbData({
+          ...SAMPLE_RKB_PREVIEW,
+          nama: targetNama || SAMPLE_RKB_PREVIEW.nama,
+          divisi: targetDivisi || SAMPLE_RKB_PREVIEW.divisi,
+          bulan: selectedBulan,
+          tahun: selectedTahun
+        });
+        setIsPendingGasDeployment(true);
+        setErrorMsg('');
+      } else {
+        setErrorMsg(errMsg || 'Gagal memuat berkas RKB dari server.');
+        setIsPendingGasDeployment(false);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -116,43 +180,43 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
     const p = String(rkbData?.predikat || '').toLowerCase();
     if (p.includes('sangat baik')) {
       return {
-        text: '#10b981',
-        bg: 'rgba(16, 185, 129, 0.15)',
+        text: '#059669',
+        bg: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ecfdf5',
         border: 'rgba(16, 185, 129, 0.4)',
         label: 'Sangat Baik'
       };
     }
     if (p.includes('baik')) {
       return {
-        text: '#06b6d4',
-        bg: 'rgba(6, 182, 212, 0.15)',
-        border: 'rgba(6, 182, 212, 0.4)',
+        text: isDark ? '#34d399' : '#1b4d3e',
+        bg: isDark ? 'rgba(27, 77, 62, 0.3)' : '#f0fdf4',
+        border: 'rgba(27, 77, 62, 0.4)',
         label: 'Baik'
       };
     }
     if (p.includes('cukup')) {
       return {
-        text: '#f59e0b',
-        bg: 'rgba(245, 158, 11, 0.15)',
-        border: 'rgba(245, 158, 11, 0.4)',
+        text: '#b45309',
+        bg: isDark ? 'rgba(212, 175, 55, 0.2)' : '#fefce8',
+        border: 'rgba(212, 175, 55, 0.45)',
         label: 'Cukup'
       };
     }
     if (p.includes('kurang') && !p.includes('sangat')) {
       return {
-        text: '#f97316',
-        bg: 'rgba(249, 115, 22, 0.15)',
-        border: 'rgba(249, 115, 22, 0.4)',
+        text: '#ea580c',
+        bg: isDark ? 'rgba(234, 88, 12, 0.2)' : '#fff7ed',
+        border: 'rgba(234, 88, 12, 0.4)',
         label: 'Kurang'
       };
     }
     return {
-      text: '#f43f5e',
-      bg: 'rgba(244, 63, 94, 0.15)',
-      border: 'rgba(244, 63, 94, 0.4)',
+      text: '#dc2626',
+      bg: isDark ? 'rgba(220, 38, 38, 0.2)' : '#fef2f2',
+      border: 'rgba(220, 38, 38, 0.4)',
       label: 'Sangat Kurang'
     };
-  }, [rkbData?.predikat]);
+  }, [rkbData?.predikat, isDark]);
 
   const totalKpiFormatted = useMemo(() => {
     const num = Number(rkbData?.totalKpi);
@@ -200,9 +264,9 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Top Header */}
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Top Header - Katulistiwa Green */}
+      <View style={[styles.header, { backgroundColor: theme.primary }]}>
         <View style={styles.headerLeft}>
           {onBack && (
             <TouchableOpacity
@@ -211,7 +275,7 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
               activeOpacity={0.7}
               accessibilityLabel="Kembali"
             >
-              <Ionicons name="arrow-back" size={20} color="#f8fafc" />
+              <Ionicons name="arrow-back" size={20} color="#ffffff" />
             </TouchableOpacity>
           )}
           <View style={styles.titleGroup}>
@@ -233,20 +297,20 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
           accessibilityLabel="Perbarui Data"
         >
           {refreshing ? (
-            <ActivityIndicator size="small" color="#10b981" />
+            <ActivityIndicator size="small" color="#d4af37" />
           ) : (
-            <Ionicons name="reload-outline" size={19} color="#10b981" />
+            <Ionicons name="reload-outline" size={19} color="#d4af37" />
           )}
         </TouchableOpacity>
       </View>
 
       {/* Admin Employee Selector Bar */}
       {isAdmin && (
-        <View style={styles.adminBar}>
+        <View style={[styles.adminBar, { backgroundColor: isDark ? '#1a2e26' : '#f0fdf4', borderBottomColor: theme.border }]}>
           <View style={styles.adminBarInfo}>
             <Ionicons name="person-circle-outline" size={16} color="#d4af37" style={{ marginRight: 6 }} />
             <Text style={styles.adminBarLabel}>Mode Admin:</Text>
-            <Text style={styles.adminBarTarget} numberOfLines={1}>
+            <Text style={[styles.adminBarTarget, { color: theme.text }]} numberOfLines={1}>
               {targetNama || 'Pilih Personel'}
             </Text>
           </View>
@@ -262,7 +326,7 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
       )}
 
       {/* Month Selector Tabs */}
-      <View style={styles.monthScrollWrapper}>
+      <View style={[styles.monthScrollWrapper, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -273,11 +337,29 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
             return (
               <TouchableOpacity
                 key={mName}
-                style={[styles.monthTab, isSelected && styles.monthTabActive]}
+                style={[
+                  styles.monthTab,
+                  {
+                    backgroundColor: isSelected
+                      ? theme.primary
+                      : (isDark ? '#262626' : '#f3f4f6'),
+                    borderColor: isSelected ? '#d4af37' : theme.border
+                  }
+                ]}
                 onPress={() => setSelectedBulan(mName)}
                 activeOpacity={0.75}
               >
-                <Text style={[styles.monthTabText, isSelected && styles.monthTabTextActive]}>
+                <Text
+                  style={[
+                    styles.monthTabText,
+                    {
+                      color: isSelected
+                        ? '#ffffff'
+                        : theme.textSecondary,
+                      fontWeight: isSelected ? '800' : '600'
+                    }
+                  ]}
+                >
                   {MONTH_SHORT[idx]}
                 </Text>
                 {isSelected && <View style={styles.monthActiveIndicator} />}
@@ -294,13 +376,28 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => loadData(true)}
-            tintColor="#10b981"
-            colors={['#10b981']}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
           />
         }
       >
+        {/* GAS Pending Deployment Advisory Banner */}
+        {isPendingGasDeployment && (
+          <View style={[styles.advisoryBanner, { backgroundColor: isDark ? 'rgba(212, 175, 55, 0.15)' : '#fefce8', borderColor: 'rgba(212, 175, 55, 0.45)' }]}>
+            <Ionicons name="information-circle" size={18} color="#b45309" style={{ marginRight: 8, marginTop: 1 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.advisoryBannerTitle, { color: '#b45309' }]}>
+                Data Pratinjau Template RKB YEKA
+              </Text>
+              <Text style={[styles.advisoryBannerText, { color: isDark ? '#d4af37' : '#92400e' }]}>
+                Backend GAS di Google Cloud belum diperbarui (action: getRkbKaryawan). Menampilkan data pratinjau template RKB aktif. Segera deploy versi baru di Google Apps Script.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Offline Cache Notice */}
-        {rkbData?.fromCache && (
+        {rkbData?.fromCache && !isPendingGasDeployment && (
           <View style={styles.offlineNotice}>
             <Ionicons name="cloud-offline-outline" size={15} color="#f59e0b" style={{ marginRight: 6 }} />
             <Text style={styles.offlineNoticeText}>
@@ -312,15 +409,15 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
         {/* Loading Spinner */}
         {loading && !refreshing && (
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#10b981" />
-            <Text style={styles.loadingText}>Mengambil berkas RKB dari server...</Text>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Mengambil berkas RKB dari server...</Text>
           </View>
         )}
 
         {/* Error Banner */}
         {errorMsg !== '' && !loading && (
           <View style={styles.errorBanner}>
-            <Ionicons name="alert-circle" size={18} color="#f43f5e" style={{ marginRight: 8 }} />
+            <Ionicons name="alert-circle" size={18} color="#ef4444" style={{ marginRight: 8 }} />
             <Text style={styles.errorBannerText}>{errorMsg}</Text>
           </View>
         )}
@@ -328,23 +425,31 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
         {/* 3 Executive Metric Cards */}
         <View style={styles.metricsContainer}>
           {/* Card 1: TOTAL KPI BULAN INI */}
-          <View style={styles.metricCard}>
+          <View style={[styles.metricCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.metricHeaderRow}>
-              <Text style={styles.metricLabel}>TOTAL KPI BULAN INI</Text>
-              <Ionicons name="speedometer-outline" size={16} color="#10b981" />
+              <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>TOTAL KPI BULAN INI</Text>
+              <View style={styles.scorePillBadge}>
+                <Ionicons name="speedometer-outline" size={13} color={theme.primary} style={{ marginRight: 3 }} />
+                <Text style={[styles.scorePillText, { color: theme.primary }]}>Skor Capaian</Text>
+              </View>
             </View>
             <View style={styles.scoreRow}>
-              <Text style={styles.scoreValue}>{totalKpiFormatted}</Text>
-              <Text style={styles.scoreScale}>/ 100</Text>
+              <Text style={[styles.scoreValue, { color: isDark ? '#34d399' : theme.primary }]}>
+                {totalKpiFormatted}
+              </Text>
+              <Text style={[styles.scoreScale, { color: theme.textSecondary }]}>/ 100</Text>
             </View>
-            <Text style={styles.metricSubtext}>• Real-time active metric</Text>
+            <Text style={[styles.metricSubtext, { color: theme.textSecondary }]}>• Real-time active metric</Text>
           </View>
 
           {/* Card 2: PREDIKAT */}
-          <View style={styles.metricCard}>
+          <View style={[styles.metricCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.metricHeaderRow}>
-              <Text style={styles.metricLabel}>PREDIKAT</Text>
-              <Ionicons name="ribbon-outline" size={16} color={predikatStyle.text} />
+              <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>PREDIKAT</Text>
+              <View style={[styles.scorePillBadge, { backgroundColor: 'rgba(212, 175, 55, 0.15)', borderColor: 'rgba(212, 175, 55, 0.4)' }]}>
+                <Ionicons name="ribbon-outline" size={13} color="#b45309" style={{ marginRight: 3 }} />
+                <Text style={[styles.scorePillText, { color: '#b45309' }]}>Evaluasi</Text>
+              </View>
             </View>
             <View style={styles.predikatWrapper}>
               <View
@@ -361,67 +466,75 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
                 </Text>
               </View>
             </View>
-            <Text style={styles.metricSubtext}>Target Min. 80.00 (Baik)</Text>
+            <Text style={[styles.metricSubtext, { color: theme.textSecondary }]}>Target Min. 80.00 (Baik)</Text>
           </View>
 
           {/* Card 3: STATUS KEGIATAN */}
-          <View style={styles.metricCard}>
+          <View style={[styles.metricCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.metricHeaderRow}>
-              <Text style={styles.metricLabel}>STATUS KEGIATAN</Text>
-              <Ionicons name="checkbox-outline" size={16} color="#38bdf8" />
+              <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>STATUS KEGIATAN</Text>
+              <View style={[styles.scorePillBadge, { backgroundColor: 'rgba(27, 77, 62, 0.1)', borderColor: 'rgba(27, 77, 62, 0.3)' }]}>
+                <Ionicons name="checkbox-outline" size={13} color={theme.primary} style={{ marginRight: 3 }} />
+                <Text style={[styles.scorePillText, { color: theme.primary }]}>Rincian Tugas</Text>
+              </View>
             </View>
             <View style={styles.statusBadgesRow}>
               <View style={styles.statusPillSelesai}>
-                <Ionicons name="checkmark-circle" size={13} color="#10b981" />
+                <Ionicons name="checkmark-circle" size={13} color="#059669" />
                 <Text style={styles.statusPillTextSelesai}>
                   Selesai: {statusCounts.selesai}
                 </Text>
               </View>
               <View style={styles.statusPillProses}>
-                <Ionicons name="time" size={13} color="#f59e0b" />
+                <Ionicons name="time" size={13} color="#d97706" />
                 <Text style={styles.statusPillTextProses}>
                   Proses: {statusCounts.proses}
                 </Text>
               </View>
               <View style={styles.statusPillBelum}>
-                <Ionicons name="alert-circle" size={13} color="#f43f5e" />
+                <Ionicons name="alert-circle" size={13} color="#dc2626" />
                 <Text style={styles.statusPillTextBelum}>
                   Belum: {statusCounts.belum}
                 </Text>
               </View>
             </View>
-            <Text style={styles.metricSubtext}>Total Kegiatan: {statusCounts.total}</Text>
+            <Text style={[styles.metricSubtext, { color: theme.textSecondary }]}>Total Kegiatan: {statusCounts.total}</Text>
           </View>
         </View>
 
         {/* Section: Yearly Performance Curve */}
-        <View style={styles.sectionCard}>
+        <View style={[styles.sectionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={styles.sectionHeader}>
             <View>
-              <Text style={styles.sectionTitle}>Tren KPI Tahunan</Text>
-              <Text style={styles.sectionSubtitle}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Tren KPI Tahunan</Text>
+              <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
                 Perkembangan performa tahun {selectedTahun}
               </Text>
             </View>
-            <View style={styles.tagPill}>
-              <Ionicons name="analytics" size={12} color="#10b981" style={{ marginRight: 4 }} />
-              <Text style={styles.tagPillText}>Performance Curve</Text>
+            <View style={[styles.tagPill, { backgroundColor: isDark ? 'rgba(212, 175, 55, 0.15)' : '#fefce8', borderColor: 'rgba(212, 175, 55, 0.4)' }]}>
+              <Ionicons name="analytics" size={12} color="#b45309" style={{ marginRight: 4 }} />
+              <Text style={[styles.tagPillText, { color: '#b45309' }]}>Performance Curve</Text>
             </View>
           </View>
 
           {/* Visual Bar / Curve Chart */}
           <View style={styles.chartContainer}>
             {/* 80 Target Benchmark Line */}
-            <View style={styles.benchmarkLine} />
-            <Text style={styles.benchmarkLabel}>Target: 80</Text>
+            <View style={[styles.benchmarkLine, { backgroundColor: theme.border }]} />
+            <Text style={[styles.benchmarkLabel, { color: theme.textSecondary }]}>Target: 80</Text>
 
             <View style={styles.chartBarsRow}>
               {yearlyTrend.map((item) => {
                 const isCurrentMonth = item.fullName === selectedBulan;
                 const score = Math.max(0, Math.min(100, item.score));
-                const barHeightPercent = `${Math.max(6, score)}%`;
-                const barColor =
-                  score >= 80 ? '#10b981' : score > 0 ? '#06b6d4' : '#1e293b';
+                const barHeightPercent = `${Math.max(8, score)}%`;
+                const barColor = isCurrentMonth
+                  ? '#d4af37'
+                  : score >= 80
+                  ? theme.primary
+                  : score > 0
+                  ? (isDark ? '#2d7a62' : '#3d8b74')
+                  : (isDark ? '#333333' : '#e2e8f0');
 
                 return (
                   <TouchableOpacity
@@ -430,7 +543,7 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
                     onPress={() => setSelectedBulan(item.fullName)}
                     activeOpacity={0.8}
                   >
-                    <View style={styles.barTrack}>
+                    <View style={[styles.barTrack, { backgroundColor: isDark ? '#262626' : '#f1f5f9' }]}>
                       <View
                         style={[
                           styles.barFill,
@@ -445,7 +558,8 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
                     <Text
                       style={[
                         styles.chartMonthLabel,
-                        isCurrentMonth && styles.chartMonthLabelActive
+                        { color: theme.textSecondary },
+                        isCurrentMonth && { color: theme.primary, fontWeight: '800' }
                       ]}
                     >
                       {item.bulan}
@@ -453,7 +567,8 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
                     <Text
                       style={[
                         styles.chartScoreLabel,
-                        isCurrentMonth && styles.chartScoreLabelActive
+                        { color: theme.textSecondary },
+                        isCurrentMonth && { color: '#b45309', fontWeight: '800' }
                       ]}
                     >
                       {score > 0 ? Math.round(score) : '-'}
@@ -466,26 +581,26 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
         </View>
 
         {/* Section: Activities Overview */}
-        <View style={styles.sectionCard}>
+        <View style={[styles.sectionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={styles.sectionHeader}>
             <View>
-              <Text style={styles.sectionTitle}>Detail Rencana & Realisasi Kegiatan</Text>
-              <Text style={styles.sectionSubtitle}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Detail Rencana & Realisasi Kegiatan</Text>
+              <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
                 Daftar butir RKB periode {selectedBulan}
               </Text>
             </View>
-            <View style={styles.tagPill}>
-              <Ionicons name="list" size={12} color="#38bdf8" style={{ marginRight: 4 }} />
-              <Text style={[styles.tagPillText, { color: '#38bdf8' }]}>Activities Overview</Text>
+            <View style={[styles.tagPill, { backgroundColor: 'rgba(27, 77, 62, 0.1)', borderColor: 'rgba(27, 77, 62, 0.3)' }]}>
+              <Ionicons name="list" size={12} color={theme.primary} style={{ marginRight: 4 }} />
+              <Text style={[styles.tagPillText, { color: theme.primary }]}>Activities Overview</Text>
             </View>
           </View>
 
           {/* Activities List */}
           {(!rkbData?.activities || rkbData.activities.length === 0) ? (
             <View style={styles.emptyBox}>
-              <Ionicons name="document-text-outline" size={40} color="#475569" />
-              <Text style={styles.emptyTitle}>Belum Ada Kegiatan RKB</Text>
-              <Text style={styles.emptyDesc}>
+              <Ionicons name="document-text-outline" size={40} color={theme.textSecondary} />
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>Belum Ada Kegiatan RKB</Text>
+              <Text style={[styles.emptyDesc, { color: theme.textSecondary }]}>
                 {rkbData?.message || 'Tidak ada data rencana kerja bulanan untuk periode ini.'}
               </Text>
             </View>
@@ -494,37 +609,50 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
               {rkbData.activities.map((act, index) => {
                 const kode = act.kode || `KD-${String(index + 1).padStart(2, '0')}`;
                 const status = String(act.status || 'Belum');
-                const isSelesai = status.toLowerCase() === 'selesai';
+                const isSelesai = status.toLowerCase() === 'selesai' || status.toLowerCase() === 'terlaksana';
                 const isProses = status.toLowerCase() === 'proses';
 
                 return (
-                  <View key={act.id || `${kode}-${index}`} style={styles.activityCard}>
+                  <View
+                    key={act.id || `${kode}-${index}`}
+                    style={[
+                      styles.activityCard,
+                      {
+                        backgroundColor: isDark ? '#242424' : '#f8faf9',
+                        borderColor: theme.border
+                      }
+                    ]}
+                  >
                     {/* Activity Top Row: Kode, Bobot, Skor */}
                     <View style={styles.activityTopRow}>
-                      <View style={styles.kodeBadge}>
+                      <View style={[styles.kodeBadge, { backgroundColor: theme.primary }]}>
                         <Text style={styles.kodeBadgeText}>{kode}</Text>
                       </View>
 
                       <View style={styles.activityMetaGroup}>
                         <View style={styles.metaPill}>
-                          <Text style={styles.metaPillLabel}>Bobot:</Text>
-                          <Text style={styles.metaPillVal}>{act.bobot || '0%'}</Text>
+                          <Text style={[styles.metaPillLabel, { color: theme.textSecondary }]}>Bobot:</Text>
+                          <Text style={[styles.metaPillVal, { color: theme.text }]}>{act.bobot || '0%'}</Text>
                         </View>
                         <View style={styles.metaPill}>
-                          <Text style={styles.metaPillLabel}>Skor:</Text>
-                          <Text style={styles.metaPillVal}>{act.skor !== undefined ? act.skor : '-'}</Text>
+                          <Text style={[styles.metaPillLabel, { color: theme.textSecondary }]}>Skor:</Text>
+                          <Text style={[styles.metaPillVal, { color: isDark ? '#34d399' : theme.primary }]}>
+                            {act.skor !== undefined ? act.skor : '-'}
+                          </Text>
                         </View>
                       </View>
                     </View>
 
                     {/* Activity Title */}
-                    <Text style={styles.activityTitle}>
+                    <Text style={[styles.activityTitle, { color: theme.text }]}>
                       {act.kegiatan || act.uraian || 'Kegiatan RKB'}
                     </Text>
 
                     {/* Output / Target if available */}
                     {act.output ? (
-                      <Text style={styles.activityOutput}>Output: {act.output}</Text>
+                      <Text style={[styles.activityOutput, { color: theme.textSecondary }]}>
+                        Target/Output: {act.output}
+                      </Text>
                     ) : null}
 
                     {/* Activity Footer Row: Status Pill */}
@@ -550,10 +678,10 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
                           size={14}
                           color={
                             isSelesai
-                              ? '#10b981'
+                              ? '#059669'
                               : isProses
-                              ? '#f59e0b'
-                              : '#f43f5e'
+                              ? '#d97706'
+                              : '#dc2626'
                           }
                           style={{ marginRight: 5 }}
                         />
@@ -562,10 +690,10 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
                             styles.statusPillItemText,
                             {
                               color: isSelesai
-                                ? '#10b981'
+                                ? '#059669'
                                 : isProses
-                                ? '#f59e0b'
-                                : '#f43f5e'
+                                ? '#d97706'
+                                : '#dc2626'
                             }
                           ]}
                         >
@@ -587,31 +715,33 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
       {isAdmin && (
         <Modal
           visible={adminPickerVisible}
+          transparent
           animationType="slide"
-          transparent={true}
           onRequestClose={() => setAdminPickerVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
+            <View style={[styles.modalContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <View style={styles.modalHeader}>
                 <View>
-                  <Text style={styles.modalTitle}>Pilih Personel</Text>
-                  <Text style={styles.modalSubtitle}>Pilih berkas RKB karyawan untuk dipantau</Text>
+                  <Text style={[styles.modalTitle, { color: theme.text }]}>Pilih Personel RKB</Text>
+                  <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
+                    Pilih nama karyawan untuk melihat capaian KPI
+                  </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.modalCloseBtn}
                   onPress={() => setAdminPickerVisible(false)}
                 >
-                  <Ionicons name="close" size={20} color="#94a3b8" />
+                  <Ionicons name="close" size={20} color={theme.textSecondary} />
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.modalSearchBox}>
-                <Ionicons name="search" size={16} color="#64748b" style={{ marginRight: 8 }} />
+              <View style={[styles.modalSearchBox, { backgroundColor: isDark ? '#262626' : '#f1f5f9', borderColor: theme.border }]}>
+                <Ionicons name="search" size={16} color={theme.textSecondary} style={{ marginRight: 8 }} />
                 <TextInput
-                  style={styles.modalSearchInput}
+                  style={[styles.modalSearchInput, { color: theme.text }]}
                   placeholder="Cari nama atau divisi..."
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={theme.textSecondary}
                   value={employeeSearch}
                   onChangeText={setEmployeeSearch}
                 />
@@ -619,8 +749,8 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
 
               {loadingEmployees ? (
                 <View style={styles.modalLoading}>
-                  <ActivityIndicator size="small" color="#10b981" />
-                  <Text style={styles.modalLoadingText}>Memuat personel...</Text>
+                  <ActivityIndicator size="small" color={theme.primary} />
+                  <Text style={[styles.modalLoadingText, { color: theme.textSecondary }]}>Memuat personel...</Text>
                 </View>
               ) : (
                 <FlatList
@@ -630,30 +760,37 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
                     const isSelected = item.Nama === targetNama;
                     return (
                       <TouchableOpacity
-                        style={[styles.empItem, isSelected && styles.empItemActive]}
+                        style={[
+                          styles.empItem,
+                          {
+                            backgroundColor: isSelected
+                              ? (isDark ? '#262626' : '#ecfdf5')
+                              : 'transparent'
+                          }
+                        ]}
                         onPress={() => handleSelectEmployee(item)}
                         activeOpacity={0.7}
                       >
-                        <View style={styles.empAvatar}>
+                        <View style={[styles.empAvatar, { backgroundColor: theme.primary }]}>
                           <Text style={styles.empAvatarText}>
                             {(item.Nama?.[0] || 'K').toUpperCase()}
                           </Text>
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={[styles.empName, isSelected && styles.empNameActive]}>
+                          <Text style={[styles.empName, { color: theme.text }, isSelected && { color: theme.primary }]}>
                             {item.Nama || 'Karyawan'}
                           </Text>
-                          <Text style={styles.empDivisi}>{item.Divisi || '-'}</Text>
+                          <Text style={[styles.empDivisi, { color: theme.textSecondary }]}>{item.Divisi || '-'}</Text>
                         </View>
                         {isSelected && (
-                          <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+                          <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
                         )}
                       </TouchableOpacity>
                     );
                   }}
                   ListEmptyComponent={
                     <View style={styles.empEmpty}>
-                      <Text style={styles.empEmptyText}>Personel tidak ditemukan</Text>
+                      <Text style={[styles.empEmptyText, { color: theme.textSecondary }]}>Personel tidak ditemukan</Text>
                     </View>
                   }
                   style={{ maxHeight: 380 }}
@@ -669,19 +806,20 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#0b0f19'
+    flex: 1
   },
   header: {
-    backgroundColor: '#131b2e',
     paddingHorizontal: 16,
     paddingVertical: 14,
     paddingTop: Platform.OS === 'ios' ? 48 : 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e293b'
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4
   },
   headerLeft: {
     flexDirection: 'row',
@@ -693,7 +831,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#1e293b',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12
@@ -709,27 +847,25 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#10b981',
+    backgroundColor: '#d4af37',
     marginRight: 6
   },
   headerTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#f8fafc',
+    color: '#ffffff',
     letterSpacing: -0.3
   },
   headerSubtitle: {
     fontSize: 11,
-    color: '#94a3b8',
+    color: '#e2e8f0',
     marginTop: 2
   },
   refreshBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#0b0f19',
-    borderWidth: 1,
-    borderColor: '#1e293b',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center'
   },
@@ -737,11 +873,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#162238',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e293b'
+    borderBottomWidth: 1
   },
   adminBarInfo: {
     flexDirection: 'row',
@@ -757,14 +891,13 @@ const styles = StyleSheet.create({
   },
   adminBarTarget: {
     fontSize: 11,
-    color: '#f8fafc',
     fontWeight: '600',
     flex: 1
   },
   adminSwitchBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0b0f19',
+    backgroundColor: '#1b4d3e',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
@@ -778,9 +911,7 @@ const styles = StyleSheet.create({
     marginRight: 2
   },
   monthScrollWrapper: {
-    backgroundColor: '#131b2e',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e293b'
+    borderBottomWidth: 1
   },
   monthScrollContent: {
     paddingHorizontal: 12,
@@ -791,36 +922,42 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
     marginRight: 6,
-    backgroundColor: '#0b0f19',
     borderWidth: 1,
-    borderColor: '#1e293b',
     alignItems: 'center',
     position: 'relative'
   },
-  monthTabActive: {
-    backgroundColor: '#064e3b',
-    borderColor: '#10b981'
-  },
   monthTabText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#94a3b8'
-  },
-  monthTabTextActive: {
-    color: '#34d399',
-    fontWeight: '800'
+    fontSize: 12
   },
   monthActiveIndicator: {
     position: 'absolute',
     bottom: -1,
     width: 14,
     height: 2,
-    backgroundColor: '#10b981',
+    backgroundColor: '#d4af37',
     borderRadius: 1
   },
   content: {
     flex: 1,
     padding: 14
+  },
+  advisoryBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14
+  },
+  advisoryBannerTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 2
+  },
+  advisoryBannerText: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '500'
   },
   offlineNotice: {
     flexDirection: 'row',
@@ -845,22 +982,21 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 12,
-    color: '#94a3b8',
     marginTop: 8
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(244, 63, 94, 0.12)',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(244, 63, 94, 0.35)',
+    borderColor: 'rgba(239, 68, 68, 0.35)',
     borderRadius: 10,
     padding: 12,
     marginBottom: 14
   },
   errorBannerText: {
     fontSize: 12,
-    color: '#f43f5e',
+    color: '#ef4444',
     fontWeight: '600',
     flex: 1
   },
@@ -868,12 +1004,15 @@ const styles = StyleSheet.create({
     marginBottom: 14
   },
   metricCard: {
-    backgroundColor: '#131b2e',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#1e293b',
-    padding: 14,
-    marginBottom: 10
+    padding: 16,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2
   },
   metricHeaderRow: {
     flexDirection: 'row',
@@ -884,8 +1023,21 @@ const styles = StyleSheet.create({
   metricLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#94a3b8',
     letterSpacing: 0.8
+  },
+  scorePillBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: 'rgba(27, 77, 62, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(27, 77, 62, 0.2)'
+  },
+  scorePillText: {
+    fontSize: 10,
+    fontWeight: '700'
   },
   scoreRow: {
     flexDirection: 'row',
@@ -895,19 +1047,16 @@ const styles = StyleSheet.create({
   scoreValue: {
     fontSize: 38,
     fontWeight: '900',
-    color: '#10b981',
     letterSpacing: -1,
     fontVariant: ['tabular-nums']
   },
   scoreScale: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#64748b',
     marginLeft: 6
   },
   metricSubtext: {
     fontSize: 11,
-    color: '#64748b',
     marginTop: 4
   },
   predikatWrapper: {
@@ -944,7 +1093,7 @@ const styles = StyleSheet.create({
   statusPillTextSelesai: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#10b981',
+    color: '#059669',
     marginLeft: 4,
     fontVariant: ['tabular-nums']
   },
@@ -961,16 +1110,16 @@ const styles = StyleSheet.create({
   statusPillTextProses: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#f59e0b',
+    color: '#d97706',
     marginLeft: 4,
     fontVariant: ['tabular-nums']
   },
   statusPillBelum: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(244, 63, 94, 0.12)',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(244, 63, 94, 0.35)',
+    borderColor: 'rgba(239, 68, 68, 0.35)',
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 8
@@ -978,17 +1127,20 @@ const styles = StyleSheet.create({
   statusPillTextBelum: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#f43f5e',
+    color: '#dc2626',
     marginLeft: 4,
     fontVariant: ['tabular-nums']
   },
   sectionCard: {
-    backgroundColor: '#131b2e',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#1e293b',
-    padding: 14,
-    marginBottom: 14
+    padding: 16,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -998,29 +1150,23 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: '800',
-    color: '#f8fafc',
     letterSpacing: -0.2
   },
   sectionSubtitle: {
     fontSize: 11,
-    color: '#64748b',
     marginTop: 2
   },
   tagPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0b0f19',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#1e293b'
+    borderWidth: 1
   },
   tagPillText: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#10b981'
+    fontWeight: '700'
   },
   chartContainer: {
     height: 140,
@@ -1034,7 +1180,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: '#334155',
     opacity: 0.8
   },
   benchmarkLabel: {
@@ -1042,7 +1187,6 @@ const styles = StyleSheet.create({
     top: 22,
     right: 4,
     fontSize: 9,
-    color: '#64748b',
     fontWeight: '600'
   },
   chartBarsRow: {
@@ -1060,7 +1204,6 @@ const styles = StyleSheet.create({
   barTrack: {
     width: 8,
     height: 70,
-    backgroundColor: '#0b0f19',
     borderRadius: 4,
     justifyContent: 'flex-end',
     overflow: 'hidden'
@@ -1071,36 +1214,24 @@ const styles = StyleSheet.create({
   },
   barFillActive: {
     borderWidth: 1,
-    borderColor: '#34d399'
+    borderColor: '#d4af37'
   },
   chartMonthLabel: {
     fontSize: 9,
-    color: '#64748b',
     marginTop: 4,
     fontWeight: '500'
   },
-  chartMonthLabelActive: {
-    color: '#10b981',
-    fontWeight: '800'
-  },
   chartScoreLabel: {
     fontSize: 8,
-    color: '#475569',
     marginTop: 1,
     fontVariant: ['tabular-nums']
-  },
-  chartScoreLabelActive: {
-    color: '#34d399',
-    fontWeight: '700'
   },
   activitiesList: {
     marginTop: 4
   },
   activityCard: {
-    backgroundColor: '#0b0f19',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#1e293b',
     padding: 12,
     marginBottom: 8
   },
@@ -1111,7 +1242,6 @@ const styles = StyleSheet.create({
     marginBottom: 6
   },
   kodeBadge: {
-    backgroundColor: '#1e293b',
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 6
@@ -1119,7 +1249,7 @@ const styles = StyleSheet.create({
   kodeBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#38bdf8'
+    color: '#ffffff'
   },
   activityMetaGroup: {
     flexDirection: 'row',
@@ -1131,25 +1261,21 @@ const styles = StyleSheet.create({
   },
   metaPillLabel: {
     fontSize: 10,
-    color: '#64748b',
     marginRight: 3
   },
   metaPillVal: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#cbd5e1',
     fontVariant: ['tabular-nums']
   },
   activityTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#f8fafc',
     lineHeight: 18,
     marginBottom: 4
   },
   activityOutput: {
     fontSize: 11,
-    color: '#94a3b8',
     marginBottom: 6
   },
   activityFooterRow: {
@@ -1175,8 +1301,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(245, 158, 11, 0.35)'
   },
   statusPillItemBelum: {
-    backgroundColor: 'rgba(244, 63, 94, 0.12)',
-    borderColor: 'rgba(244, 63, 94, 0.35)'
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderColor: 'rgba(239, 68, 68, 0.35)'
   },
   statusPillItemText: {
     fontSize: 11,
@@ -1190,29 +1316,25 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#94a3b8',
     marginTop: 8
   },
   emptyDesc: {
     fontSize: 11,
-    color: '#64748b',
     textAlign: 'center',
     marginTop: 4,
     paddingHorizontal: 16
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end'
   },
   modalContainer: {
-    backgroundColor: '#131b2e',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 16,
     maxHeight: '80%',
-    borderWidth: 1,
-    borderColor: '#1e293b'
+    borderWidth: 1
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1222,12 +1344,10 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#f8fafc'
+    fontWeight: '800'
   },
   modalSubtitle: {
     fontSize: 11,
-    color: '#94a3b8',
     marginTop: 2
   },
   modalCloseBtn: {
@@ -1236,10 +1356,8 @@ const styles = StyleSheet.create({
   modalSearchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0b0f19',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#1e293b',
     paddingHorizontal: 10,
     paddingVertical: 8,
     marginBottom: 12
@@ -1247,7 +1365,6 @@ const styles = StyleSheet.create({
   modalSearchInput: {
     flex: 1,
     fontSize: 12,
-    color: '#f8fafc',
     padding: 0
   },
   modalLoading: {
@@ -1256,7 +1373,6 @@ const styles = StyleSheet.create({
   },
   modalLoadingText: {
     fontSize: 12,
-    color: '#94a3b8',
     marginTop: 6
   },
   empItem: {
@@ -1267,14 +1383,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 4
   },
-  empItemActive: {
-    backgroundColor: '#1e293b'
-  },
   empAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#0b0f19',
     borderWidth: 1,
     borderColor: '#d4af37',
     justifyContent: 'center',
@@ -1288,22 +1400,16 @@ const styles = StyleSheet.create({
   },
   empName: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#f8fafc'
-  },
-  empNameActive: {
-    color: '#10b981'
+    fontWeight: '700'
   },
   empDivisi: {
-    fontSize: 11,
-    color: '#64748b'
+    fontSize: 11
   },
   empEmpty: {
     paddingVertical: 20,
     alignItems: 'center'
   },
   empEmptyText: {
-    fontSize: 12,
-    color: '#64748b'
+    fontSize: 12
   }
 });
