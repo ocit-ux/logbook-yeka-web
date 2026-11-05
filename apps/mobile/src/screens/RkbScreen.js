@@ -89,6 +89,20 @@ export default function RkbScreen({ user, isAdmin = false, onBack }) {
     }
   }, [isAdmin]);
 
+  // In admin mode, if targetNama is generic "Super Admin", auto-select first employee
+  useEffect(() => {
+    if (isAdmin && employeeList.length > 0) {
+      const isGenericAdmin = !targetNama || targetNama.toLowerCase().includes('admin');
+      if (isGenericAdmin) {
+        const firstValidEmp = employeeList.find(e => e.Nama && !e.Nama.toLowerCase().includes('admin'));
+        if (firstValidEmp && firstValidEmp.Nama) {
+          setTargetNama(firstValidEmp.Nama);
+          setTargetDivisi(firstValidEmp.Divisi || '');
+        }
+      }
+    }
+  }, [isAdmin, employeeList, targetNama]);
+
   const loadData = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);

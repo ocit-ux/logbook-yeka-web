@@ -1699,6 +1699,12 @@ function matchEmployeeRkbFile(files, employeeName, division) {
   return bestMatch;
 }
 
+/**
+ * Extracts precalculated KPI summary from Section D of an RKB sheet if present.
+ *
+ * @param {Array<Array>} rows
+ * @returns {Object|null} { totalKpi, predikat }
+ */
 function extractRkbRekapKpi(rows) {
   if (!rows || !Array.isArray(rows) || rows.length === 0) return null;
   var totalKpi = null;
