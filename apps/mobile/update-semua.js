@@ -149,7 +149,8 @@ function runUpdate() {
   let originalAppJson = '';
 
   const rawMsg = process.argv[2] || "Update Otomatis";
-  const msg = rawMsg.replace(/^["']|["']$/g, '');
+  const cleanedMsg = rawMsg.replace(/^["']|["']$/g, '').trim();
+  const msg = cleanedMsg || "Update Otomatis YEKA";
   console.log(`\n[PROSES] Memulai pembaruan sinkronisasi Android & iOS Web App (Pesan: "${msg}")...\n`);
 
   // ==========================================
