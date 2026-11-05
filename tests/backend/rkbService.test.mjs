@@ -179,6 +179,19 @@ test('matchEmployeeRkbFile matches employee spreadsheet by name and division var
   // Non-matching query returns null
   const matchNone = matchEmployeeRkbFile(mockFiles, 'Budi', 'Operasional');
   assert.strictEqual(matchNone, null);
+
+  // Critical disambiguation: Muhammad Abdul Rosyid vs Ainur Rosyidah
+  const ambigFiles = [
+    { id: 'ainur-1', name: 'RKB_AINUR ROSYIDAH _RND_YEKA .xlsx' },
+    { id: 'rosyid-1', name: 'RKB_ROSYID_DATA&INFORMASI_YEKA..xlsx' }
+  ];
+  const matchRosyid = matchEmployeeRkbFile(ambigFiles, 'Muhammad Abdul Rosyid', 'Operasional');
+  assert.ok(matchRosyid);
+  assert.strictEqual(matchRosyid.id, 'rosyid-1');
+
+  const matchAinur = matchEmployeeRkbFile(ambigFiles, 'AINUR ROSYIDAH', 'RND');
+  assert.ok(matchAinur);
+  assert.strictEqual(matchAinur.id, 'ainur-1');
 });
 
 test('parseRkbSheetRows extracts activities and converts percentages and status', () => {

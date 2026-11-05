@@ -1595,11 +1595,22 @@ function matchEmployeeRkbFile(files, employeeName, division) {
   if (!files || !Array.isArray(files) || files.length === 0) return null;
   if (!employeeName) return null;
 
+  function norm(str) {
+    return String(str || '').toUpperCase()
+      .replace(/DD/g, 'D')
+      .replace(/LL/g, 'L')
+      .replace(/MM/g, 'M')
+      .replace(/SS/g, 'S');
+  }
+
   var cleanEmp = String(employeeName || '').toUpperCase().trim();
   var empTokens = cleanEmp.split(/[^A-Z0-9]+/).filter(function(t) { return t.length >= 2; });
+  var normEmpTokens = empTokens.map(norm);
 
   var cleanDiv = String(division || '').toUpperCase().trim();
   var divTokens = cleanDiv.split(/[^A-Z0-9]+/).filter(function(t) { return t.length >= 2; });
+
+  var genericTokens = ['NUR', 'AHMAD', 'MUHAMMAD', 'ADI', 'AL'];
 
   var bestMatch = null;
   var bestScore = 0;
@@ -1621,35 +1632,65 @@ function matchEmployeeRkbFile(files, employeeName, division) {
     if (!name) continue;
 
     var upperName = name.toUpperCase();
-    var matchScore = 0;
+    var fileTokens = upperName.split(/[^A-Z0-9]+/).filter(function(t) { return t.length >= 2; });
+    var normFileTokens = fileTokens.map(norm);
 
-    // Check employee tokens
-    var empMatchCount = 0;
+    var matchScore = 0;
+    var exactEmpTokenMatches = 0;
+    var distinctiveMatch = false;
+
     for (var e = 0; e < empTokens.length; e++) {
-      if (upperName.indexOf(empTokens[e]) !== -1) {
-        empMatchCount++;
-        matchScore += 50;
+      var token = empTokens[e];
+      var nToken = normEmpTokens[e];
+
+      var idx = fileTokens.indexOf(token);
+      if (idx === -1) idx = normFileTokens.indexOf(nToken);
+
+      if (idx !== -1) {
+        exactEmpTokenMatches++;
+        var isGeneric = genericTokens.indexOf(token) !== -1;
+        if (!isGeneric) {
+          distinctiveMatch = true;
+          matchScore += 100 + (token.length * 5);
+        } else {
+          matchScore += 30;
+        }
       }
     }
 
-    if (empMatchCount === 0) {
-      // Must match at least one employee name token
+    if (exactEmpTokenMatches === 0) {
       continue;
     }
 
-    // Check division tokens
+    if (!distinctiveMatch && exactEmpTokenMatches < 2 && empTokens.length > 1) {
+      continue;
+    }
+
     for (var d = 0; d < divTokens.length; d++) {
-      if (upperName.indexOf(divTokens[d]) !== -1) {
-        matchScore += 20;
+      if (fileTokens.indexOf(divTokens[d]) !== -1) {
+        matchScore += 40;
       }
     }
 
-    // Bonus for starting with RKB
     if (upperName.indexOf('RKB') === 0) {
       matchScore += 10;
     }
 
-    if (matchScore > bestScore) {
+    if (fileTokens.indexOf('AINUR') !== -1 && empTokens.indexOf('AINUR') === -1) {
+      matchScore -= 150;
+    }
+    if ((fileTokens.indexOf('SIROJUDIN') !== -1 || normFileTokens.indexOf('SIROJUDIN') !== -1) &&
+        normEmpTokens.indexOf('SIROJUDIN') === -1) {
+      matchScore -= 150;
+    }
+    if (fileTokens.indexOf('VYAS') !== -1 && empTokens.indexOf('VYAS') === -1) {
+      matchScore -= 150;
+    }
+    if (fileTokens.indexOf('ADIYAKSA') !== -1 && empTokens.indexOf('ADIYAKSA') === -1) {
+      matchScore -= 150;
+    }
+
+    if (matchScore > bestScore && matchScore >= 40) {
       bestScore = matchScore;
       bestMatch = file;
     }
@@ -1658,12 +1699,6 @@ function matchEmployeeRkbFile(files, employeeName, division) {
   return bestMatch;
 }
 
-/**
- * Extracts precalculated KPI summary from Section D of an RKB sheet if present.
- *
- * @param {Array<Array>} rows
- * @returns {Object|null} { totalKpi, predikat }
- */
 function extractRkbRekapKpi(rows) {
   if (!rows || !Array.isArray(rows) || rows.length === 0) return null;
   var totalKpi = null;
