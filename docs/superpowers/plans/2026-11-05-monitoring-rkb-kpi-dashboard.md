@@ -60,7 +60,7 @@
 - Modify: `apps/backend-gas/Index.html` (add navigation button, RKB monitoring section, executive metric cards, canvas chart, and realization table)
 - Create: `tests/backend/rkbWebPortal.test.mjs` (static and contract tests for Web App UI components)
 
-- [ ] **Step 1: Write failing contract test in `tests/backend/rkbWebPortal.test.mjs`**
+- [x] **Step 1: Write failing contract test in `tests/backend/rkbWebPortal.test.mjs`**
   - Verify `Index.html` contains `#nav-rkb-kpi` navigation button.
   - Verify `Index.html` contains `#page-rkb-kpi` section with cards for Total KPI, Predikat, and Status Kegiatan.
   - Verify `Index.html` contains canvas or chart element `#chart-rkb-tren`.
@@ -68,10 +68,10 @@
   - Verify employee selector `#select-rkb-karyawan` exists for Admin role.
   - Rule R-02 typography check.
 
-- [ ] **Step 2: Run test to confirm failure**
+- [x] **Step 2: Run test to confirm failure**
   Run `node --test tests/backend/rkbWebPortal.test.mjs`.
 
-- [ ] **Step 3: Implement Web App RKB Dashboard in `apps/backend-gas/Index.html`**
+- [x] **Step 3: Implement Web App RKB Dashboard in `apps/backend-gas/Index.html`**
   - Add sidebar button `<button onclick="switchPage('rkb-kpi')" id="nav-rkb-kpi">`.
   - Build `#page-rkb-kpi` matching the executive dark theme (`#0b0f19` background, neon cyan/green accents):
     - Top header with employee greeting, division, active period, and refresh button.
@@ -82,10 +82,10 @@
   - Implement client-side loading, rendering, and refresh logic via `gsRun('getRkbKaryawan', ...)`.
   - Ensure zero em dashes in script and markup.
 
-- [ ] **Step 4: Verify contract tests pass**
+- [x] **Step 4: Verify contract tests pass**
   Run `node --test tests/backend/rkbWebPortal.test.mjs`.
 
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   Commit Task 2 changes with message: `feat(web): add executive rkb kpi monitoring dashboard to gas admin portal` (zero em dashes in commit message).
 
 ---

@@ -223,6 +223,9 @@
                 <button onclick="switchPage('riwayat')" id="nav-riwayat" class="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#d4af37] hover:text-[#1b4d3e] text-sm font-bold text-[#d4af37] transition duration-200">
                     <i class="fa-solid fa-clock-rotate-left w-4"></i>Riwayat Jurnal Anda
                 </button>
+                <button id="nav-rkb-kpi" onclick="switchPage('rkb-kpi')" class="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#d4af37] hover:text-[#1b4d3e] text-sm font-bold text-[#d4af37] hidden transition duration-200">
+                    <i class="fa-solid fa-chart-line w-4"></i>Monitoring RKB & KPI
+                </button>
 
                 <button onclick="switchPage('admin')" id="nav-admin" class="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#d4af37] hover:text-[#1b4d3e] text-sm font-bold text-[#d4af37] hidden transition duration-200">
                     <i class="fa-solid fa-folder-open w-4"></i>Riwayat Jurnal Karyawan
@@ -499,6 +502,166 @@
                     </div>
                 </div>
             </section>
+            <section id="page-rkb-kpi" class="hidden space-y-6">
+                <div class="bg-[#0b0f19] text-slate-100 p-5 md:p-7 rounded-2xl border border-[#1e293b] shadow-2xl space-y-6">
+                    <!-- Header -->
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-[#1e293b]">
+                        <div>
+                            <div class="flex items-center gap-2.5">
+                                <span class="relative flex h-3 w-3">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                                </span>
+                                <h2 class="text-xl md:text-2xl font-black tracking-tight text-white">Dashboard KPI YEKA</h2>
+                            </div>
+                            <p id="rkb-header-subtitle" class="text-xs text-slate-400 mt-1">Memantau Kinerja Bulanan & Capaian RKB Personal</p>
+                        </div>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <span class="text-[11px] text-slate-500 font-mono tracking-wider">LAST UPDATED: <span id="rkb-last-updated" class="text-slate-300">-</span></span>
+                            <button onclick="loadRkbDashboard(true)" id="btn-refresh-rkb" class="px-3.5 py-1.5 rounded-xl bg-[#131b2e] hover:bg-[#1e293b] text-slate-200 border border-[#1e293b] hover:border-slate-600 text-xs font-semibold flex items-center gap-2 transition duration-150">
+                                <i class="fa-solid fa-arrows-rotate text-emerald-400"></i>Refresh
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filter Bar -->
+                    <div class="bg-[#131b2e] border border-[#1e293b] rounded-xl p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                        <div class="flex items-center gap-2 flex-wrap flex-1">
+                            <div id="container-rkb-karyawan" class="hidden flex items-center gap-2 min-w-[200px]">
+                                <label for="select-rkb-karyawan" class="text-xs text-slate-400 font-medium whitespace-nowrap">Personel:</label>
+                                <select id="select-rkb-karyawan" onchange="loadRkbDashboard()" class="w-full bg-[#0b0f19] text-slate-200 border border-[#1e293b] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+                                    <option value="">Memuat personel...</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label for="select-rkb-bulan" class="text-xs text-slate-400 font-medium whitespace-nowrap">Bulan:</label>
+                                <select id="select-rkb-bulan" onchange="loadRkbDashboard()" class="bg-[#0b0f19] text-slate-200 border border-[#1e293b] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+                                    <option value="Januari">Januari</option>
+                                    <option value="Februari">Februari</option>
+                                    <option value="Maret">Maret</option>
+                                    <option value="April">April</option>
+                                    <option value="Mei">Mei</option>
+                                    <option value="Juni">Juni</option>
+                                    <option value="Juli">Juli</option>
+                                    <option value="Agustus">Agustus</option>
+                                    <option value="September">September</option>
+                                    <option value="Oktober">Oktober</option>
+                                    <option value="November">November</option>
+                                    <option value="Desember">Desember</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label for="select-rkb-tahun" class="text-xs text-slate-400 font-medium whitespace-nowrap">Tahun:</label>
+                                <select id="select-rkb-tahun" onchange="loadRkbDashboard()" class="bg-[#0b0f19] text-slate-200 border border-[#1e293b] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+                                    <option value="2025">2025</option>
+                                    <option value="2026" selected>2026</option>
+                                    <option value="2027">2027</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="rkb-info-source" class="text-[11px] text-slate-400 italic text-right">
+                            Google Drive Folder RKB YEKA
+                        </div>
+                    </div>
+
+                    <!-- Top 3 Metric Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Card 1: Total KPI -->
+                        <div class="bg-[#131b2e] border border-[#1e293b] rounded-2xl p-5 shadow-lg relative overflow-hidden">
+                            <div class="flex items-center justify-between text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                                <span>TOTAL KPI BULAN INI</span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">Score</span>
+                            </div>
+                            <div class="mt-3 flex items-baseline gap-2">
+                                <span id="rkb-metric-score" class="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 font-mono">0.00</span>
+                                <span class="text-xs text-slate-400 font-medium">/ 100</span>
+                            </div>
+                            <p class="mt-2 text-[11px] text-slate-400 flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Real-time active metric
+                            </p>
+                        </div>
+
+                        <!-- Card 2: Predikat -->
+                        <div class="bg-[#131b2e] border border-[#1e293b] rounded-2xl p-5 shadow-lg relative overflow-hidden">
+                            <div class="flex items-center justify-between text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                                <span>PREDIKAT</span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">Status</span>
+                            </div>
+                            <div class="mt-3">
+                                <span id="rkb-metric-predikat" class="inline-block px-3 py-1.5 rounded-xl text-lg sm:text-xl font-bold bg-slate-800 text-slate-200 border border-slate-700">Sangat Kurang</span>
+                            </div>
+                            <p class="mt-2 text-[11px] text-slate-400 flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>Evaluasi Capaian
+                            </p>
+                        </div>
+
+                        <!-- Card 3: Status Kegiatan -->
+                        <div class="bg-[#131b2e] border border-[#1e293b] rounded-2xl p-5 shadow-lg relative overflow-hidden">
+                            <div class="flex items-center justify-between text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                                <span>STATUS KEGIATAN</span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold">Tasks</span>
+                            </div>
+                            <div class="mt-3 flex items-center gap-2 flex-wrap">
+                                <span id="rkb-badge-selesai" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-mono">
+                                    <i class="fa-solid fa-circle-check text-[10px]"></i>0 Selesai
+                                </span>
+                                <span id="rkb-badge-proses" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 font-mono">
+                                    <i class="fa-solid fa-spinner text-[10px]"></i>0 Proses
+                                </span>
+                                <span id="rkb-badge-belum" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30 font-mono">
+                                    <i class="fa-solid fa-circle-xmark text-[10px]"></i>0 Belum
+                                </span>
+                            </div>
+                            <p class="mt-2 text-[11px] text-slate-400 flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>Ringkasan status pekerjaan
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Yearly Performance Curve -->
+                    <div class="bg-[#131b2e] border border-[#1e293b] rounded-2xl p-5 shadow-lg">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-200">Tren KPI Tahunan</h3>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Grafik capaian skor performa Jan s.d. Des</p>
+                            </div>
+                            <span class="text-[10px] px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold uppercase tracking-wider">Performance Curve</span>
+                        </div>
+                        <div class="w-full relative overflow-hidden" style="height: 220px;">
+                            <canvas id="chart-rkb-tren" class="w-full h-full block"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Activities Overview Table -->
+                    <div class="bg-[#131b2e] border border-[#1e293b] rounded-2xl p-5 shadow-lg">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-200">Detail Rencana & Realisasi Kegiatan</h3>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Daftar item RKB bulanan beserta bobot dan progres skor</p>
+                            </div>
+                            <span class="text-[10px] px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold uppercase tracking-wider">Activities Overview</span>
+                        </div>
+                        <div class="overflow-x-auto rounded-xl border border-[#1e293b]">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-[#0b0f19] text-slate-400 uppercase text-[10.5px] font-bold tracking-wider border-b border-[#1e293b]">
+                                        <th class="py-3 px-4">KODE</th>
+                                        <th class="py-3 px-4">KEGIATAN</th>
+                                        <th class="py-3 px-4 text-right">BOBOT</th>
+                                        <th class="py-3 px-4 text-center">STATUS</th>
+                                        <th class="py-3 px-4 text-right">SKOR</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-rkb-kegiatan" class="divide-y divide-[#1e293b] text-slate-300">
+                                    <tr>
+                                        <td colspan="5" class="py-6 text-center text-slate-500 italic">Memuat kegiatan RKB...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
         </div>
     </div>
@@ -730,6 +893,8 @@
                 document.getElementById('nav-admin').classList.remove('hidden');
                 document.getElementById('nav-rekap-absensi').classList.remove('hidden');
                 document.getElementById('nav-data-karyawan').classList.remove('hidden');
+                const navRkbAdmin = document.getElementById('nav-rkb-kpi');
+                if (navRkbAdmin) navRkbAdmin.classList.remove('hidden');
                 await switchPage('admin');
             } else {
                 document.getElementById('nav-dashboard').classList.remove('hidden');
@@ -737,6 +902,8 @@
                 document.getElementById('nav-admin').classList.add('hidden');
                 document.getElementById('nav-rekap-absensi').classList.add('hidden');
                 document.getElementById('nav-data-karyawan').classList.add('hidden');
+                const navRkbUser = document.getElementById('nav-rkb-kpi');
+                if (navRkbUser) navRkbUser.classList.remove('hidden');
                 await switchPage('dashboard');
             }
         }
@@ -1196,7 +1363,7 @@
         }
 
         async function switchPage(pageId) {
-            const pages = ['page-dashboard', 'page-riwayat', 'page-admin', 'page-rekap-absensi', 'page-data-karyawan'];
+            const pages = ['page-dashboard', 'page-riwayat', 'page-admin', 'page-rekap-absensi', 'page-data-karyawan', 'page-rkb-kpi'];
             pages.forEach(id => { if (document.getElementById(id)) document.getElementById(id).classList.add('hidden'); });
 
             if (document.getElementById('page-' + pageId)) document.getElementById('page-' + pageId).classList.remove('hidden');
@@ -1228,6 +1395,10 @@
                 if (listSemuaKaryawan.length === 0) await fetchDaftarKaryawan();
                 renderTabelDataKaryawan();
             }
+            if (pageId === 'rkb-kpi') {
+                buildRkbKaryawanDropdown();
+                await loadRkbDashboard();
+            }
         }
 
         let adminRenderLimit = 100; // ponytail: render 100 rows initially, load more on click to prevent DOM/Drive thumbnail lag
@@ -1238,6 +1409,7 @@
             await fetchLogJurnalDariCloud();
             renderTabelAdminMaster();
             buildAdminKaryawanDropdown();
+            buildRkbKaryawanDropdown();
             buildRekapKaryawanDropdown();
             renderTabelRekapExcelView();
         }
@@ -1668,7 +1840,358 @@
             }
             event.target.value = '';
         }
-    </script>
+    
+        let cacheRkbData = null;
+
+        function buildRkbKaryawanDropdown() {
+            const container = document.getElementById('container-rkb-karyawan');
+            const select = document.getElementById('select-rkb-karyawan');
+            if (!select) return;
+
+            if (currentUser && currentUser.role === 'admin') {
+                if (container) container.classList.remove('hidden');
+                select.classList.remove('hidden');
+                let namaList = [];
+                if (listSemuaKaryawan && listSemuaKaryawan.length > 0) {
+                    namaList = listSemuaKaryawan.map(k => k.Nama).filter(Boolean);
+                } else if (cacheLogJurnal && cacheLogJurnal.length > 0) {
+                    namaList = [...new Set(cacheLogJurnal.map(j => j.Nama).filter(Boolean))];
+                }
+                if (namaList.length === 0 && currentUser.nama) {
+                    namaList = [currentUser.nama];
+                }
+
+                const currentVal = select.value;
+                select.innerHTML = namaList.map(nama => {
+                    const selected = (currentVal === nama || (!currentVal && nama === currentUser.nama)) ? ' selected' : '';
+                    return '<option value="' + escapeHtml(nama) + '"' + selected + '>' + escapeHtml(nama) + '</option>';
+                }).join('');
+            } else {
+                if (container) container.classList.add('hidden');
+                select.classList.add('hidden');
+            }
+        }
+
+        async function loadRkbDashboard(forceRefresh) {
+            const subtitleEl = document.getElementById('rkb-header-subtitle');
+            const updatedEl = document.getElementById('rkb-last-updated');
+            const tableBody = document.getElementById('table-rkb-kegiatan');
+
+            let targetNama = '';
+            let targetDivisi = '';
+
+            if (currentUser && currentUser.role === 'admin') {
+                if (listSemuaKaryawan.length === 0 && typeof fetchDaftarKaryawan === 'function') {
+                    await fetchDaftarKaryawan();
+                    buildRkbKaryawanDropdown();
+                }
+                const selectKaryawan = document.getElementById('select-rkb-karyawan');
+                if (selectKaryawan && selectKaryawan.value) {
+                    targetNama = selectKaryawan.value;
+                    const foundKaryawan = (listSemuaKaryawan || []).find(k => k.Nama === targetNama);
+                    if (foundKaryawan && foundKaryawan.Divisi) targetDivisi = foundKaryawan.Divisi;
+                } else if (currentUser.nama) {
+                    targetNama = currentUser.nama;
+                    targetDivisi = currentUser.divisi || '';
+                }
+            } else if (currentUser) {
+                targetNama = currentUser.nama || '';
+                targetDivisi = currentUser.divisi || '';
+            }
+
+            const monthNamesIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            const selectBulan = document.getElementById('select-rkb-bulan');
+            if (selectBulan && !selectBulan.dataset.initialized) {
+                const curIdx = new Date().getMonth();
+                selectBulan.value = monthNamesIndo[curIdx] || 'Januari';
+                selectBulan.dataset.initialized = 'true';
+            }
+
+            const selectTahun = document.getElementById('select-rkb-tahun');
+            const targetBulan = selectBulan ? selectBulan.value : 'Januari';
+            const targetTahun = selectTahun ? selectTahun.value : new Date().getFullYear();
+
+            if (subtitleEl) {
+                subtitleEl.innerText = 'Memuat data RKB ' + (targetNama || 'karyawan') + ' periode ' + targetBulan + ' ' + targetTahun + '...';
+            }
+            if (tableBody) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400 font-medium"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Mengambil berkas RKB dari server...</td></tr>';
+            }
+
+            try {
+                let res;
+                if (typeof gsRun === 'function' && typeof google !== 'undefined' && google.script && google.script.run) {
+                    res = await gsRun('getRkbKaryawan', targetNama, targetDivisi, targetBulan, targetTahun);
+                } else {
+                    res = {
+                        success: true,
+                        found: true,
+                        nama: targetNama,
+                        divisi: targetDivisi,
+                        bulan: targetBulan,
+                        tahun: targetTahun,
+                        totalKpi: 0,
+                        predikat: 'Sangat Kurang',
+                        statusKegiatan: { selesai: 0, proses: 0, belum: 0, total: 0 },
+                        trenKpi: [
+                            { bulan: 'Jan', skor: 0, label: 'Jan' },
+                            { bulan: 'Feb', skor: 0, label: 'Feb' },
+                            { bulan: 'Mar', skor: 0, label: 'Mar' },
+                            { bulan: 'Apr', skor: 0, label: 'Apr' },
+                            { bulan: 'Mei', skor: 0, label: 'Mei' },
+                            { bulan: 'Jun', skor: 0, label: 'Jun' },
+                            { bulan: 'Jul', skor: 0, label: 'Jul' },
+                            { bulan: 'Agu', skor: 0, label: 'Agu' },
+                            { bulan: 'Sep', skor: 0, label: 'Sep' },
+                            { bulan: 'Okt', skor: 0, label: 'Okt' },
+                            { bulan: 'Nov', skor: 0, label: 'Nov' },
+                            { bulan: 'Des', skor: 0, label: 'Des' }
+                        ],
+                        activities: []
+                    };
+                }
+
+                cacheRkbData = res;
+                renderRkbDashboard(res);
+
+                const now = new Date();
+                const timeStr = String(now.getHours()).padStart(2, '0') + ':' +
+                    String(now.getMinutes()).padStart(2, '0') + ':' +
+                    String(now.getSeconds()).padStart(2, '0') + ' WIB';
+                if (updatedEl) updatedEl.innerText = timeStr;
+
+                if (subtitleEl) {
+                    subtitleEl.innerText = (res.nama || targetNama || 'Karyawan') + ' (' + (res.divisi || targetDivisi || 'Umum') + ') | Periode ' + targetBulan + ' ' + targetTahun;
+                }
+            } catch (err) {
+                console.error('loadRkbDashboard error:', err);
+                if (subtitleEl) subtitleEl.innerText = 'Gagal memuat RKB: ' + (err.message || String(err));
+                if (tableBody) {
+                    tableBody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-rose-400 font-medium">Terjadi kendala saat memuat berkas RKB: ' + escapeHtml(err.message || String(err)) + '</td></tr>';
+                }
+            }
+        }
+
+        function renderRkbDashboard(data) {
+            if (!data) return;
+
+            const scoreEl = document.getElementById('rkb-metric-score');
+            if (scoreEl) {
+                scoreEl.innerText = Number(data.totalKpi || 0).toFixed(2);
+            }
+
+            const predikatEl = document.getElementById('rkb-metric-predikat');
+            if (predikatEl) {
+                const pred = data.predikat || 'Sangat Kurang';
+                predikatEl.innerText = pred;
+                let colorClasses = 'bg-slate-800 text-slate-200 border-slate-700';
+                if (pred === 'Sangat Baik') {
+                    colorClasses = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+                } else if (pred === 'Baik') {
+                    colorClasses = 'bg-teal-500/20 text-teal-300 border-teal-500/40';
+                } else if (pred === 'Cukup') {
+                    colorClasses = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40';
+                } else if (pred === 'Kurang') {
+                    colorClasses = 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+                } else if (pred === 'Sangat Kurang') {
+                    colorClasses = 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+                }
+                predikatEl.className = 'inline-block px-3 py-1.5 rounded-xl text-lg sm:text-xl font-bold border ' + colorClasses;
+            }
+
+            const st = data.statusKegiatan || { selesai: 0, proses: 0, belum: 0, total: 0 };
+            const badgeSelesai = document.getElementById('rkb-badge-selesai');
+            const badgeProses = document.getElementById('rkb-badge-proses');
+            const badgeBelum = document.getElementById('rkb-badge-belum');
+
+            if (badgeSelesai) {
+                badgeSelesai.innerHTML = '<i class="fa-solid fa-circle-check text-[10px]"></i>' + (st.selesai || 0) + ' Selesai';
+            }
+            if (badgeProses) {
+                badgeProses.innerHTML = '<i class="fa-solid fa-spinner text-[10px]"></i>' + (st.proses || 0) + ' Proses';
+            }
+            if (badgeBelum) {
+                badgeBelum.innerHTML = '<i class="fa-solid fa-circle-xmark text-[10px]"></i>' + (st.belum || 0) + ' Belum';
+            }
+
+            // Render table
+            const tableBody = document.getElementById('table-rkb-kegiatan');
+            if (tableBody) {
+                const list = data.activities || data.kegiatan || [];
+                if (list.length === 0) {
+                    const emptyMsg = data.message || 'Tidak ada data kegiatan RKB untuk periode ini.';
+                    tableBody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400 italic">' + escapeHtml(emptyMsg) + '</td></tr>';
+                } else {
+                    tableBody.innerHTML = list.map(item => {
+                        const status = item.status || 'Belum';
+                        let badgeClass = 'bg-rose-500/15 text-rose-300 border-rose-500/30';
+                        let iconClass = 'fa-circle-xmark';
+                        if (status === 'Selesai') {
+                            badgeClass = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+                            iconClass = 'fa-circle-check';
+                        } else if (status === 'Proses') {
+                            badgeClass = 'bg-amber-500/15 text-amber-300 border-amber-500/30';
+                            iconClass = 'fa-spinner';
+                        }
+
+                        let bobotText = '-';
+                        if (item.bobot != null && item.bobot !== '') {
+                            const bVal = Number(item.bobot);
+                            bobotText = (bVal <= 1 ? (bVal * 100).toFixed(0) : bVal.toFixed(0)) + '%';
+                        }
+
+                        let skorText = '-';
+                        if (item.skor != null && item.skor !== '') {
+                            skorText = Number(item.skor).toFixed(1);
+                        }
+
+                        return '<tr class="hover:bg-[#1e293b]/50 transition duration-150">' +
+                            '<td class="py-3 px-4 font-mono font-bold text-slate-200 whitespace-nowrap">' + escapeHtml(item.kode || '-') + '</td>' +
+                            '<td class="py-3 px-4 text-slate-300 font-medium leading-relaxed max-w-md">' + escapeHtml(item.kegiatan || '-') + '</td>' +
+                            '<td class="py-3 px-4 text-right font-mono text-cyan-300 font-semibold">' + bobotText + '</td>' +
+                            '<td class="py-3 px-4 text-center">' +
+                                '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ' + badgeClass + '">' +
+                                    '<i class="fa-solid ' + iconClass + ' text-[10px]"></i>' + escapeHtml(status) +
+                                '</span>' +
+                            '</td>' +
+                            '<td class="py-3 px-4 text-right font-mono font-bold text-emerald-400">' + skorText + '</td>' +
+                        '</tr>';
+                    }).join('');
+                }
+            }
+
+            // Draw chart
+            drawRkbTrendChart('chart-rkb-tren', data.trenKpi || []);
+        }
+
+        function drawRkbTrendChart(canvasId, monthlyTrend) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            const displayWidth = rect.width > 0 ? rect.width : (canvas.parentElement ? canvas.parentElement.clientWidth : 600);
+            const displayHeight = 220;
+
+            canvas.width = Math.floor(displayWidth * dpr);
+            canvas.height = Math.floor(displayHeight * dpr);
+            canvas.style.width = displayWidth + 'px';
+            canvas.style.height = displayHeight + 'px';
+
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            // Background
+            ctx.clearRect(0, 0, displayWidth, displayHeight);
+
+            const padLeft = 40;
+            const padRight = 20;
+            const padTop = 25;
+            const padBottom = 30;
+            const plotW = displayWidth - padLeft - padRight;
+            const plotH = displayHeight - padTop - padBottom;
+
+            // Grid lines
+            const gridValues = [0, 25, 50, 75, 100];
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = '#64748b';
+            ctx.font = '10px ui-monospace, SFMono-Regular, monospace';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+
+            gridValues.forEach(val => {
+                const y = padTop + plotH - (val / 100) * plotH;
+                ctx.beginPath();
+                ctx.moveTo(padLeft, y);
+                ctx.lineTo(displayWidth - padRight, y);
+                ctx.stroke();
+                ctx.fillText(String(val), padLeft - 8, y);
+            });
+
+            // Trend points (12 months)
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            const dataPoints = months.map((m, idx) => {
+                const found = Array.isArray(monthlyTrend) ? monthlyTrend.find(item => item && (item.bulan === m || item.label === m || item.bulan === idx + 1)) : null;
+                const skor = found ? Number(found.skor || 0) : (monthlyTrend && monthlyTrend[idx] != null ? Number(monthlyTrend[idx].skor || 0) : 0);
+                const x = padLeft + (idx / (months.length - 1)) * plotW;
+                const y = padTop + plotH - (Math.min(100, Math.max(0, skor)) / 100) * plotH;
+                return { x, y, skor, label: m };
+            });
+
+            if (dataPoints.length < 2) return;
+
+            // Area fill gradient
+            const areaGradient = ctx.createLinearGradient(0, padTop, 0, padTop + plotH);
+            areaGradient.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
+            areaGradient.addColorStop(1, 'rgba(16, 185, 129, 0.00)');
+
+            ctx.beginPath();
+            ctx.moveTo(dataPoints[0].x, dataPoints[0].y);
+            for (let i = 0; i < dataPoints.length - 1; i++) {
+                const p0 = dataPoints[i];
+                const p1 = dataPoints[i + 1];
+                const cpX = (p0.x + p1.x) / 2;
+                ctx.bezierCurveTo(cpX, p0.y, cpX, p1.y, p1.x, p1.y);
+            }
+            ctx.lineTo(dataPoints[dataPoints.length - 1].x, padTop + plotH);
+            ctx.lineTo(dataPoints[0].x, padTop + plotH);
+            ctx.closePath();
+            ctx.fillStyle = areaGradient;
+            ctx.fill();
+
+            // Line stroke
+            ctx.beginPath();
+            ctx.moveTo(dataPoints[0].x, dataPoints[0].y);
+            for (let i = 0; i < dataPoints.length - 1; i++) {
+                const p0 = dataPoints[i];
+                const p1 = dataPoints[i + 1];
+                const cpX = (p0.x + p1.x) / 2;
+                ctx.bezierCurveTo(cpX, p0.y, cpX, p1.y, p1.x, p1.y);
+            }
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2.5;
+            ctx.shadowColor = 'rgba(16, 185, 129, 0.5)';
+            ctx.shadowBlur = 8;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Month labels and data dots
+            dataPoints.forEach(p => {
+                // Month label
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                ctx.fillText(p.label, p.x, padTop + plotH + 8);
+
+                // Dot
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = p.skor > 0 ? '#10b981' : '#334155';
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#0b0f19';
+                ctx.stroke();
+
+                // Score text above point if > 0
+                if (p.skor > 0) {
+                    ctx.fillStyle = '#34d399';
+                    ctx.font = 'bold 9px ui-monospace, monospace';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillText(p.skor.toFixed(0), p.x, p.y - 6);
+                }
+            });
+        }
+
+        window.addEventListener('resize', function() {
+            const rkbPage = document.getElementById('page-rkb-kpi');
+            if (rkbPage && !rkbPage.classList.contains('hidden') && cacheRkbData) {
+                drawRkbTrendChart('chart-rkb-tren', cacheRkbData.trenKpi || []);
+            }
+        });
+</script>
 
     <!-- iOS PWA Prompt Banner -->
     <div id="ios-pwa-prompt" class="hidden fixed bottom-6 left-4 right-4 bg-white/95 backdrop-blur shadow-2xl rounded-2xl p-4 border-2 border-[#1b4d3e] z-[9999] animate-bounce">
