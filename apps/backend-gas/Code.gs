@@ -19,6 +19,7 @@
 // ==== KONFIGURASI ====
 const DRIVE_FOLDER_ID = '151sdXGAKkiG-2vwZNuLjycDJUX-Xwpf3';
 const DRIVE_FOLDER_PROFIL_ID = '1ePLRV24KwGL8bK0pSfVwhdxoMM9NlJPh';
+const DRIVE_FOLDER_RKB_ID = '14C_sXl9X0L3RAPCFFRKWmWf_qrwoDf2i';
 const SPREADSHEET_ID = '1GqZcbopZQchw0EpO-nN5OL6hwXvznw-Irj8QxzQmQQM';
 
 const SHEET_USERS = 'Users';
@@ -149,6 +150,20 @@ function doPost(e) {
         break;
       case 'getUserProfile':
         result = getUserProfile(postData.rowIndex);
+        break;
+      case 'getRkbKaryawan':
+        result = getRkbKaryawan(
+          postData.targetNama || postData.nama,
+          postData.targetDivisi || postData.divisi,
+          postData.targetBulan || postData.bulan,
+          postData.targetTahun || postData.tahun
+        );
+        break;
+      case 'getAllRkbSummary':
+        result = getAllRkbSummary(
+          postData.targetBulan || postData.bulan,
+          postData.targetTahun || postData.tahun
+        );
         break;
       default:
         throw new Error('Unknown action: ' + action);
@@ -816,6 +831,279 @@ function getPilihanIzin() {
     return ['Sakit', 'Izin', 'Lainnya'];
   }
 }
+// RKB & KPI Service Integration
+
+/**
+ * Mengambil data RKB dan metrik KPI karyawan dari Google Drive folder.
+ *
+ * @param {string} targetNama Nama karyawan yang dicari
+ * @param {string} targetDivisi Divisi karyawan
+ * @param {string|number} targetBulan Bulan (1-12 atau nama bulan)
+ * @param {string|number} targetTahun Tahun kegiatan
+ * @returns {Object} Data RKB lengkap termasuk totalKpi, predikat, statusKegiatan, trenKpi, dan activities
+ */
+function getRkbKaryawan(targetNama, targetDivisi, targetBulan, targetTahun) {
+  const defaultYear = targetTahun || new Date().getFullYear();
+  const emptyTrend = typeof parseYearlyKpiTrend === 'function' ? parseYearlyKpiTrend([]) : [];
+
+  const emptyResponse = {
+    success: true,
+    found: false,
+    message: 'File RKB tidak ditemukan untuk ' + (targetNama || '-'),
+    nama: targetNama || '',
+    divisi: targetDivisi || '',
+    bulan: targetBulan || '',
+    tahun: defaultYear,
+    totalKpi: 0,
+    predikat: 'Sangat Kurang',
+    statusKegiatan: { selesai: 0, proses: 0, belum: 0, total: 0 },
+    trenKpi: emptyTrend,
+    activities: []
+  };
+
+  if (!targetNama) return emptyResponse;
+
+  try {
+    const folder = DriveApp.getFolderById(DRIVE_FOLDER_RKB_ID);
+    const filesIter = folder.getFiles();
+    const filesList = [];
+    while (filesIter.hasNext()) {
+      filesList.push(filesIter.next());
+    }
+
+    const matcher = typeof matchEmployeeRkbFile === 'function' ? matchEmployeeRkbFile : null;
+    const matchedFile = matcher ? matcher(filesList, targetNama, targetDivisi) : null;
+    if (!matchedFile) {
+      return emptyResponse;
+    }
+
+    const fileId = typeof matchedFile.getId === 'function' ? matchedFile.getId() : (matchedFile.id || '');
+    const fileName = typeof matchedFile.getName === 'function' ? matchedFile.getName() : (matchedFile.name || '');
+
+    let ss = null;
+    try {
+      ss = SpreadsheetApp.openById(fileId);
+    } catch (openErr) {
+      Logger.log('Tidak dapat membuka spreadsheet langsung: ' + openErr.message);
+    }
+
+    if (!ss) {
+      return {
+        success: true,
+        found: true,
+        fileId: fileId,
+        fileName: fileName,
+        nama: targetNama,
+        divisi: targetDivisi || '',
+        bulan: targetBulan || '',
+        tahun: defaultYear,
+        totalKpi: 0,
+        predikat: 'Sangat Kurang',
+        statusKegiatan: { selesai: 0, proses: 0, belum: 0, total: 0 },
+        trenKpi: emptyTrend,
+        activities: [],
+        message: 'File RKB ditemukan namun tidak dapat dibaca sebagai spreadsheet'
+      };
+    }
+
+    const sheets = ss.getSheets();
+    if (!sheets || sheets.length === 0) {
+      return {
+        success: true,
+        found: true,
+        fileId: fileId,
+        fileName: fileName,
+        nama: targetNama,
+        divisi: targetDivisi || '',
+        bulan: targetBulan || '',
+        tahun: defaultYear,
+        totalKpi: 0,
+        predikat: 'Sangat Kurang',
+        statusKegiatan: { selesai: 0, proses: 0, belum: 0, total: 0 },
+        trenKpi: emptyTrend,
+        activities: [],
+        message: 'Spreadsheet tidak memiliki lembar kerja'
+      };
+    }
+
+    const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const monthShorts = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+    let targetBulanName = '';
+    let targetBulanShort = '';
+    if (typeof targetBulan === 'number' || (!isNaN(Number(targetBulan)) && Number(targetBulan) >= 1 && Number(targetBulan) <= 12)) {
+      const idx = Number(targetBulan) - 1;
+      targetBulanName = monthNames[idx];
+      targetBulanShort = monthShorts[idx];
+    } else if (typeof targetBulan === 'string' && targetBulan.trim() !== '') {
+      const tbClean = targetBulan.trim().toLowerCase();
+      for (let m = 0; m < 12; m++) {
+        if (monthNames[m].toLowerCase() === tbClean || monthShorts[m].toLowerCase() === tbClean || tbClean.indexOf(monthNames[m].toLowerCase()) !== -1) {
+          targetBulanName = monthNames[m];
+          targetBulanShort = monthShorts[m];
+          break;
+        }
+      }
+      if (!targetBulanName) {
+        targetBulanName = targetBulan.trim();
+        targetBulanShort = targetBulan.trim().substring(0, 3);
+      }
+    }
+
+    let activeSheet = null;
+    const monthlyScores = {};
+
+    for (let s = 0; s < sheets.length; s++) {
+      const sheet = sheets[s];
+      const sheetName = sheet.getName().trim();
+      const sNameLower = sheetName.toLowerCase();
+
+      for (let m = 0; m < 12; m++) {
+        const fullM = monthNames[m].toLowerCase();
+        const shortM = monthShorts[m].toLowerCase();
+        if (sNameLower === fullM || sNameLower === shortM || sNameLower.indexOf(fullM) !== -1 || sNameLower.indexOf(shortM) !== -1) {
+          try {
+            const mRows = sheet.getDataRange().getValues();
+            const mActivities = typeof parseRkbSheetRows === 'function' ? parseRkbSheetRows(mRows) : [];
+            const mMetrics = typeof calculateRkbMetrics === 'function' ? calculateRkbMetrics(mActivities) : { totalKpi: 0 };
+            monthlyScores[monthShorts[m]] = mMetrics.totalKpi;
+          } catch (e) {
+            // Ignore error per sheet
+          }
+          break;
+        }
+      }
+
+      if (!activeSheet && targetBulanName) {
+        if (sNameLower === targetBulanName.toLowerCase() || sNameLower === targetBulanShort.toLowerCase() ||
+            sNameLower.indexOf(targetBulanName.toLowerCase()) !== -1 || sNameLower.indexOf(targetBulanShort.toLowerCase()) !== -1) {
+          activeSheet = sheet;
+        }
+      }
+    }
+
+    if (!activeSheet) {
+      activeSheet = sheets[0];
+    }
+
+    const activeRows = activeSheet.getDataRange().getValues();
+    const activities = typeof parseRkbSheetRows === 'function' ? parseRkbSheetRows(activeRows) : [];
+    const metrics = typeof calculateRkbMetrics === 'function' ? calculateRkbMetrics(activities) : {
+      totalKpi: 0,
+      predikat: 'Sangat Kurang',
+      statusKegiatan: { selesai: 0, proses: 0, belum: 0, total: activities.length }
+    };
+    const yearlyTrend = typeof parseYearlyKpiTrend === 'function' ? parseYearlyKpiTrend(monthlyScores) : [];
+
+    return {
+      success: true,
+      found: true,
+      fileId: fileId,
+      fileName: fileName,
+      sheetName: activeSheet.getName(),
+      nama: targetNama,
+      divisi: targetDivisi || '',
+      bulan: targetBulan || activeSheet.getName(),
+      tahun: defaultYear,
+      totalKpi: metrics.totalKpi,
+      predikat: metrics.predikat,
+      statusKegiatan: metrics.statusKegiatan,
+      trenKpi: yearlyTrend,
+      activities: activities
+    };
+
+  } catch (err) {
+    Logger.log('Error getRkbKaryawan: ' + err.message);
+    return {
+      ...emptyResponse,
+      message: 'Gagal memuat RKB: ' + err.message
+    };
+  }
+}
+
+/**
+ * Mengambil ringkasan RKB untuk seluruh karyawan terdaftar.
+ *
+ * @param {string|number} targetBulan Bulan yang diminta
+ * @param {string|number} targetTahun Tahun yang diminta
+ * @returns {Array<Object>} List ringkasan RKB per karyawan
+ */
+function getAllRkbSummary(targetBulan, targetTahun) {
+  try {
+    const users = getAllKaryawan();
+    if (!users || !Array.isArray(users) || users.length === 0) {
+      return [];
+    }
+
+    let filesList = [];
+    try {
+      const folder = DriveApp.getFolderById(DRIVE_FOLDER_RKB_ID);
+      const filesIter = folder.getFiles();
+      while (filesIter.hasNext()) {
+        filesList.push(filesIter.next());
+      }
+    } catch (driveErr) {
+      Logger.log('Gagal mengakses folder RKB: ' + driveErr.message);
+    }
+
+    const summaryList = [];
+    const matcher = typeof matchEmployeeRkbFile === 'function' ? matchEmployeeRkbFile : null;
+
+    for (let u = 0; u < users.length; u++) {
+      const user = users[u];
+      const nama = user.Nama || user.nama || '';
+      const divisi = user.Divisi || user.divisi || '';
+      const role = String(user.Role || user.role || '').toLowerCase();
+
+      if (!nama || role === 'admin') continue;
+
+      const matchedFile = matcher ? matcher(filesList, nama, divisi) : null;
+      if (!matchedFile) {
+        summaryList.push({
+          nama: nama,
+          divisi: divisi,
+          hasFile: false,
+          fileName: null,
+          totalKpi: 0,
+          predikat: 'Sangat Kurang',
+          statusKegiatan: { selesai: 0, proses: 0, belum: 0, total: 0 }
+        });
+        continue;
+      }
+
+      const fileName = typeof matchedFile.getName === 'function' ? matchedFile.getName() : (matchedFile.name || '');
+
+      try {
+        const detail = getRkbKaryawan(nama, divisi, targetBulan, targetTahun);
+        summaryList.push({
+          nama: nama,
+          divisi: divisi,
+          hasFile: true,
+          fileName: fileName,
+          totalKpi: detail.totalKpi,
+          predikat: detail.predikat,
+          statusKegiatan: detail.statusKegiatan
+        });
+      } catch (itemErr) {
+        summaryList.push({
+          nama: nama,
+          divisi: divisi,
+          hasFile: true,
+          fileName: fileName,
+          totalKpi: 0,
+          predikat: 'Sangat Kurang',
+          statusKegiatan: { selesai: 0, proses: 0, belum: 0, total: 0 }
+        });
+      }
+    }
+
+    return summaryList;
+  } catch (err) {
+    Logger.log('Error getAllRkbSummary: ' + err.message);
+    return [];
+  }
+}
+
 // ==== RESET PIN ====
 function doResetPin(username) {
   const lock = LockService.getScriptLock();
