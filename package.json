@@ -6,5 +6,8 @@
   ],
   "scripts": {
     "test": "node --test tests/backend/*.test.mjs tests/watermark/*.test.mjs tests/integration/*.test.mjs tests/unit/*.test.mjs"
+  },
+  "dependencies": {
+    "expo-splash-screen": "~57.0.11"
   }
 }

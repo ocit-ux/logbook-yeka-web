@@ -21,7 +21,12 @@
     "android": {
       "package": "com.yeka.syncin",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "splash": {
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
         "backgroundColor": "#ffffff"
       },
       "permissions": [
@@ -34,6 +39,14 @@
       "googleServicesFile": "./google-services.json"
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff",
+          "image": "./assets/splash.png",
+          "imageWidth": 180
+        }
+      ],
       [
         "expo-camera",
         {
@@ -78,6 +91,9 @@
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "owner": "admin-yeka"
+    "owner": "admin-yeka",
+    "experiments": {
+      "baseUrl": "/logbook-yeka-web"
+    }
   }
 }

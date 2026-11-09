@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Alert, Platform, AppState, ActivityIndicator } from 'react-native';
 import * as Updates from 'expo-updates';
+import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +23,9 @@ import {
   setupNotificationResponseReceivedListener,
   checkInitialNotificationResponseAsync
 } from './src/utils/notifications';
+
+// Tahan splash screen native agar tidak tertutup otomatis sebelum auth & cache siap
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function MainApp() {
   const { theme, isDark } = useTheme();
@@ -211,7 +215,11 @@ function MainApp() {
           syncPushTokenToServer(u);
         }
       } catch(e) {}
-      finally { setAuthChecked(true); }
+      finally {
+        setAuthChecked(true);
+        // Sembunyikan splash screen native dengan mulus begitu otentikasi awal selesai
+        SplashScreen.hideAsync().catch(() => {});
+      }
     })();
   }, []);
 
