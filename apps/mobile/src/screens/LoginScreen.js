@@ -175,10 +175,23 @@ export default function LoginScreen({ onLoginSuccess }) {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>PIN / Sandi Keamanan</Text>
-              <View style={styles.inputContainer}>
+              <View style={[styles.inputContainer, styles.inputContainerWithAction]}>
                 <Ionicons name="lock-closed" size={20} color={theme.primary} style={styles.inputIcon} />
-                <TextInput style={styles.input} placeholder="Masukkan PIN" placeholderTextColor={theme.textSecondary} secureTextEntry={!showPin} value={pin} onChangeText={setPin} />
-                <TouchableOpacity onPress={() => setShowPin(!showPin)} style={{ paddingHorizontal: 10 }}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Masukkan PIN"
+                  placeholderTextColor={theme.textSecondary}
+                  secureTextEntry={!showPin}
+                  value={pin}
+                  onChangeText={setPin}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPin(!showPin)}
+                  style={styles.eyeButton}
+                  activeOpacity={0.7}
+                  accessibilityLabel={showPin ? "Sembunyikan PIN" : "Tampilkan PIN"}
+                  accessibilityRole="button"
+                >
                   <Ionicons name={showPin ? "eye-off" : "eye"} size={20} color={theme.textSecondary} />
                 </TouchableOpacity>
               </View>
@@ -213,9 +226,22 @@ export default function LoginScreen({ onLoginSuccess }) {
             <View style={styles.inputContainer2}><TextInput style={styles.input2} placeholder="Telepon / WA" placeholderTextColor={theme.textSecondary} value={regForm.telepon} onChangeText={(t) => updateRegForm('telepon', t)} /></View>
             <View style={styles.inputContainer2}><TextInput style={styles.input2} placeholder="Jabatan" placeholderTextColor={theme.textSecondary} value={regForm.jabatan} onChangeText={(t) => updateRegForm('jabatan', t)} /></View>
             <View style={styles.inputContainer2}><TextInput style={styles.input2} placeholder="Divisi" placeholderTextColor={theme.textSecondary} value={regForm.divisi} onChangeText={(t) => updateRegForm('divisi', t)} /></View>
-            <View style={[styles.inputContainer2, { flexDirection: 'row', alignItems: 'center' }]}>
-              <TextInput style={[styles.input2, { flex: 1 }]} placeholder="Buat PIN" placeholderTextColor={theme.textSecondary} secureTextEntry={!showPin} value={regForm.pin} onChangeText={(t) => updateRegForm('pin', t)} />
-              <TouchableOpacity onPress={() => setShowPin(!showPin)} style={{ padding: 10 }}>
+            <View style={[styles.inputContainer2, styles.inputContainer2WithAction]}>
+              <TextInput
+                style={[styles.input2, styles.input2Flex]}
+                placeholder="Buat PIN"
+                placeholderTextColor={theme.textSecondary}
+                secureTextEntry={!showPin}
+                value={regForm.pin}
+                onChangeText={(t) => updateRegForm('pin', t)}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPin(!showPin)}
+                style={styles.eyeButton}
+                activeOpacity={0.7}
+                accessibilityLabel={showPin ? "Sembunyikan PIN" : "Tampilkan PIN"}
+                accessibilityRole="button"
+              >
                 <Ionicons name={showPin ? "eye-off" : "eye"} size={20} color={theme.textSecondary} />
               </TouchableOpacity>
             </View>
@@ -333,15 +359,21 @@ const getStyles = (theme) => StyleSheet.create({
     borderColor: theme.border,
     borderRadius: 10,
     paddingHorizontal: 12,
+    minHeight: 52,
+  },
+  inputContainerWithAction: {
+    paddingRight: 4,
   },
   inputIcon: {
     marginRight: 10,
   },
   input: {
     flex: 1,
+    minWidth: 0,
     paddingVertical: 14,
     fontSize: 16,
     color: theme.text,
+    outlineStyle: 'none',
   },
   inputContainer2: {
     backgroundColor: theme.background,
@@ -350,11 +382,29 @@ const getStyles = (theme) => StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     marginBottom: 12,
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  inputContainer2WithAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 4,
   },
   input2: {
     paddingVertical: 12,
     fontSize: 14,
     color: theme.text,
+    outlineStyle: 'none',
+  },
+  input2Flex: {
+    flex: 1,
+    minWidth: 0,
+  },
+  eyeButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   button: {
     backgroundColor: theme.primary,
